@@ -24,7 +24,8 @@
 
 #define INITIALIZATION 0
 #define IDLE 1
-#define MEASUREMENT 2
+#define LOADING 2
+#define MEASUREMENT 3
 
 
 uint8_t seconds = 0;
@@ -50,6 +51,8 @@ int main(void)
     current_month_old = 0;
     current_year_old = 0;
     
+    finished_chronoAmp = 0;
+    
     glucose_concentration = 100;
     glucose_concentration_old = 0;
     
@@ -72,7 +75,6 @@ int main(void)
     
     uint8_t glucose_concentration_from_memory = 0;
     char flag = 0;
-    char unit[] = "mg/dl";
     
     int len = 0;
     
@@ -121,7 +123,7 @@ int main(void)
     {
         switch(state) {
             case INITIALIZATION:
-                /*OLED_welcome_screen();
+                OLED_welcome_screen();
                 
                 rtc_read_time(RTC_ADDRESS);
                 len = snprintf(rtc_content, sizeof(rtc_content), "Secondi: %d\r\n", current_seconds);
@@ -147,21 +149,8 @@ int main(void)
                     glucose_concentration_from_memory = get_measurement_from_memory(eeprom_current_address - 7);
                 }
                 
-                state = IDLE;*/
-                if(power_on){
-                    power_on = 0;
-                    display_battery_level(battery_level);
+                state = IDLE;
 
-                }
-                
-                rtc_set_time();
-                
-                display_bluetooth_connection(flag_bluetooth);
-                
-                OLED_display_glucose(glucose_concentration);
-                
-                OLED_display_indicator();
-            
             break;
             
             case IDLE:
@@ -173,18 +162,27 @@ int main(void)
                 }   
             
             break;
+                
+            case LOADING:
+                
+                
+            break;
             
             case MEASUREMENT:
-                rtc_read_time(RTC_ADDRESS);
-                len = snprintf(rtc_content, sizeof(rtc_content), "%d-%d-%d %02d:%02d:%02d\n", current_date, 
-                               current_month, current_year, current_hours, current_minutes, current_seconds);
-                display_clear();
-                display_update();
-                rtx_setTextSize(1);
-                rtx_setTextColor(WHITE);
-                rtx_setCursor(0,0);
-                rtx_println(rtc_content);
-                display_update();
+                if(power_on){
+                    power_on = 0;
+                    display_battery_level(battery_level);
+
+                }
+                
+                rtc_set_time();
+                
+                display_bluetooth_connection(flag_bluetooth);
+                
+                OLED_display_glucose();
+                
+                OLED_display_indicator();
+            
                 
                 button_state = Pin_Button_Read();
                 len = snprintf(message, sizeof(message), "%d\n", button_state);

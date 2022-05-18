@@ -774,7 +774,7 @@ void OLED_welcome_screen() {
     rtx_setCursor(18,42);
     rtx_println("the measurement");
     display_update();
-    CyDelay(1000);
+    CyDelay(100);
 }
 
 /*  DISPLAY BATTERY LEVEL
