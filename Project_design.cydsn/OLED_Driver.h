@@ -26,6 +26,7 @@
     #define INVERSE 2 
         
     #define DISPLAY_ADDRESS                 0x3D
+    #define START_LOADING_BAR               10
             
     int16_t cursor_x, cursor_y;
     uint8_t textsize;
@@ -61,6 +62,7 @@
     void display_bluetooth_connection(uint8_t flag_bluetooth);
     void OLED_display_glucose();
     void OLED_display_indicator();
+    void OLED_loading();
 
 #endif
 /* [] END OF FILE */

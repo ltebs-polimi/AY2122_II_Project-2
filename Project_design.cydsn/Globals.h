@@ -27,7 +27,9 @@
     uint8_t glucose_concentration;                  //Current glucose concentration value
     uint8_t glucose_concentration_old;              //Previous glucose concentration value
     uint8_t finished_chronoAmp;                     //Flag that signals if the chronoamperometry is finished
-
+    uint8_t chronoAmp_progress;                     //Progress of the chronoamperometry procedure
+    uint8_t chronoAmp_progress_old;                 //Previous progress of the chronoamperometry procedure
+ 
 // OLED GLOBALS
     uint8_t power_on;                               //Flag that signals the power on of the device
     uint8_t battery_level;

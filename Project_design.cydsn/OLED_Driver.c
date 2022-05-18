@@ -959,4 +959,31 @@ void OLED_display_indicator(){
         display_update();             
     }
 }
+
+/*  CHRONOAMPEROMETRY PROGRESS
+*   \brief: Function that displays a progress bar depending on the progress of
+*           chronoamperometry procedure
+*   \Parameters: NONE
+*   \Return: NONE
+*/
+void OLED_loading(){
+    int len = snprintf(glucose_content, sizeof(glucose_content), "LOADING");
+    rtx_setTextSize(2);
+    rtx_setTextColor(WHITE);
+    rtx_setCursor(23,10);
+    rtx_println(glucose_content);
+    display_update();
+    
+    if(chronoAmp_progress != chronoAmp_progress_old)
+    {
+        chronoAmp_progress_old = chronoAmp_progress;
+        rtx_fillRect(START_LOADING_BAR + chronoAmp_progress, 40, 4, 10, WHITE);
+        display_update();
+        chronoAmp_progress += 1;
+        if(chronoAmp_progress == 100)
+        {
+            finished_chronoAmp = 1;
+        }
+    }    
+}
 /* [] END OF FILE */

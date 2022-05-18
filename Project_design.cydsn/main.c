@@ -52,6 +52,8 @@ int main(void)
     current_year_old = 0;
     
     finished_chronoAmp = 0;
+    chronoAmp_progress = 0;
+    chronoAmp_progress_old = -1;
     
     glucose_concentration = 100;
     glucose_concentration_old = 0;
@@ -158,17 +160,25 @@ int main(void)
                 //len = snprintf(message, sizeof(message), "%d\n", button_state);
                 //UART_1_PutString(message);
                 if(!button_state) {
-                    state = MEASUREMENT;
+                    state = LOADING;
+                    display_clear();
                 }   
             
             break;
                 
             case LOADING:
-                
+                if(!finished_chronoAmp)
+                {
+                    OLED_loading();
+                } else {
+                    state = MEASUREMENT;
+                }
                 
             break;
             
             case MEASUREMENT:
+                finished_chronoAmp = 0;
+                chronoAmp_progress = 0;
                 if(power_on){
                     power_on = 0;
                     display_battery_level(battery_level);
