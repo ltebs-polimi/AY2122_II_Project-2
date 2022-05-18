@@ -16,6 +16,8 @@
 #include <project.h>
 #include <ErrorCodes.h>
 
+#include "OLED_Driver.h"
+
 #ifndef _RTC_DRIVER_H
     #define _RTC_DRIVER_H
 
@@ -85,7 +87,9 @@
     void set_RTC(uint8_t current_seconds, uint8_t current_minutes, uint8_t current_hours, uint8_t current_date, 
                  uint8_t current_month, uint8_t current_year);
     void rtc_init(uint8_t rtc_address);
-    void rtc_read_time(uint8_t rtc_data_register);  
+    void rtc_read_time(uint8_t rtc_data_register);
+    void rtc_set_time(void);
+    void rtc_display_time(void);
     ErrorCode RTC_ReadRegister(uint8_t device_address, uint8_t register_address, uint8_t* data);
     ErrorCode RTC_WriteRegister(uint8_t device_address, uint8_t register_address, uint8_t data);
 

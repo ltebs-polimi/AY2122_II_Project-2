@@ -20,6 +20,7 @@
 
 #include "font.h"
 #include "OLED_Driver.h"
+#include "RTC_Driver.h"
 
 /*------------------------------------------------------------------------
 *                        OLED DISPLAY REGISTERS
@@ -359,6 +360,15 @@ void set_pixel_off(uint16_t x, uint16_t y) {
     *display_buf = *(display_buf + page*DISPLAY_WIDTH + x) & ~(1 << (0b00000111 & y));   
 }
 
+/*  SET LINE
+*   \brief: Function that creates a line
+*   \Parameters:
+*        @param x1: first x coordinate
+*        @param y1: first y coordinate
+*        @param x2: final x coordinate
+*        @param y1: final y coordinate
+*        @param color: line color
+*/
 static void display_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color){
 
     if(x1 == x2){
@@ -767,6 +777,12 @@ void OLED_welcome_screen() {
     CyDelay(1000);
 }
 
+/*  DISPLAY BATTERY LEVEL
+*   \brief: Function that displays the battery level on the OLED
+*   \Parameters:
+*       @param battery_level: battery sampled by ADC from analog pin
+*   \Return: NONE
+*/
 void display_battery_level(uint8_t battery_level){
     int i = 0;
     
@@ -836,10 +852,111 @@ void display_battery_level(uint8_t battery_level){
         rtx_fillRect(2,2,3,4, WHITE);
         display_update();
     }
-
 }
 
+/*  BLUETOOTH STATUS
+*   \brief: Function that displays if the bluetooth is connected or not
+*   \Parameters:
+*       @param flag_bluetooth: 0 or 1 depending if not connected or connected
+*   \Return: NONE
+*/
+void display_bluetooth_connection(uint8_t flag_bluetooth){
+    if(flag_bluetooth != flag_bluetooth_old)
+    {
+        display_clear();
+        display_battery_level(battery_level);
+        rtc_display_time();
+        flag_bluetooth_old = flag_bluetooth;
+        if(flag_bluetooth==1)
+        {
+            rtx_drawLine(0, 53, 6, 59, WHITE);
+            rtx_drawLine(0, 59, 6, 54, WHITE);
+            rtx_drawLine(6, 53, 3, 49, WHITE);
+            rtx_drawLine(6, 59, 3, 63, WHITE);
+            rtx_drawLine(3, 49, 3, 63, WHITE);        
+        } else {
+            rtx_drawLine(0, 53, 6, 59, WHITE);
+            rtx_drawLine(0, 59, 6, 54, WHITE);
+            rtx_drawLine(6, 53, 3, 49, WHITE);
+            rtx_drawLine(6, 59, 3, 63, WHITE);
+            rtx_drawLine(3, 49, 3, 63, WHITE);
+            rtx_drawLine(0, 48, 7, 64, WHITE);
+        }
+        
+        display_update();
+    }
+        
+}
 
+/*  DISPLAY GLUCOSE VALUE
+*   \brief: Function that displays glucose value on the OLED screen
+*   \Parameters: NONE
+*   \Return: NONE
+*/
+void OLED_display_glucose(){
+    int len = snprintf(glucose_content, sizeof(glucose_content), "GLUCOSE VALUE:");
+    rtx_setTextSize(1);
+    rtx_setTextColor(WHITE);
+    rtx_setCursor(26,20);
+    rtx_println(glucose_content);
+    display_update();
+    
+    if(glucose_concentration != glucose_concentration_old)
+    {
+        glucose_concentration_old = glucose_concentration;
+        len = snprintf(glucose_content, sizeof(glucose_content), "%d", glucose_concentration);
+        rtx_fillRect(32,40,35,14, BLACK);
+        display_update();
+        rtx_setTextSize(2);
+        rtx_setTextColor(WHITE);
+        rtx_setCursor(32,40);
+        rtx_print(glucose_content);
+        display_update();
+    }
+    
+    len = snprintf(glucose_content, sizeof(glucose_content), "mg/dl");
+    rtx_setTextSize(1);
+    rtx_setTextColor(WHITE);
+    rtx_setCursor(70,45);
+    rtx_print(glucose_content);
+    display_update();
+}
 
-
+/*  DISPLAY INDICATOR
+*   \brief: Function that displays an emojii approving or disapproving the measured
+            glucose concentration
+*   \Parameters: NONE
+*   \Return: NONE
+*/
+void OLED_display_indicator(){
+    if(glucose_concentration <= 90 && glucose_concentration>=80)
+    {
+        rtx_fillRect(116, 48, 12, 16, WHITE);
+        rtx_drawLine(119, 51, 119, 55, BLACK);
+        rtx_drawLine(124, 51, 124, 55, BLACK);
+        
+        rtx_drawPixel(119, 58, BLACK);
+        rtx_drawPixel(124, 58, BLACK);
+        rtx_drawPixel(120, 59, BLACK);
+        rtx_drawPixel(123, 59, BLACK);
+        rtx_drawLine(121, 60, 122, 60, BLACK);
+        
+        display_update();             
+    }
+    
+    if(glucose_concentration >= 90 || glucose_concentration<=80)
+    {
+        rtx_fillRect(116, 48, 12, 16, WHITE);
+        rtx_drawLine(119, 51, 119, 55, BLACK);
+        rtx_drawLine(124, 51, 124, 55, BLACK);
+        
+        rtx_drawPixel(119, 60, BLACK);
+        rtx_drawPixel(124, 60, BLACK);
+        rtx_drawPixel(120, 59, BLACK);
+        rtx_drawPixel(123, 59, BLACK);
+        rtx_drawLine(121, 58, 122, 58, BLACK);
+        
+        display_update();             
+    }
+}
 /* [] END OF FILE */

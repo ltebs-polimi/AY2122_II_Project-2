@@ -139,6 +139,61 @@ void rtc_read_time(uint8_t rtc_data_register) {
     
 }
 
+/*  RTC SET TIME
+*   \brief: Function that changes the time stamp on the OLED screen
+*           changing only minutes and hours.
+*   \Parameters: NONE
+*   \Return: NONE
+*/
+void rtc_set_time(){
+    rtc_read_time(RTC_ADDRESS);
+    char rtc_content_minutes[64] = {};
+    char rtc_content_hours[64] = {};
+    int len = 0;
+    
+    if(current_minutes != current_minutes_old)
+    {
+        current_minutes_old = current_minutes;
+        rtx_fillRect(111,0,13,7, BLACK);
+        display_update();
+        len = snprintf(rtc_content_minutes, sizeof(rtc_content_minutes), "%02d\n", current_minutes);
+        rtx_setTextSize(1);
+        rtx_setTextColor(WHITE);
+        rtx_setCursor(111,0);
+        rtx_println(rtc_content_minutes);
+        display_update(); 
+    }
+    
+    if(current_hours != current_hours_old)
+    {
+        current_hours_old = current_hours;
+        rtx_fillRect(92,0,13,7, BLACK);
+        display_update();
+        len = snprintf(rtc_content_hours, sizeof(rtc_content_hours), "%02d", current_hours);
+        rtx_setTextSize(1);
+        rtx_setTextColor(WHITE);
+        rtx_setCursor(92,0);
+        rtx_println(rtc_content_minutes);
+        display_update(); 
+    }
+}
+
+/*  RTC DISPLAY TIME
+*   \brief: Function that prints the time stamp on the OLED
+*   \Parameters: NONE
+*   \Return: NONE
+*/
+void rtc_display_time(){
+    rtc_read_time(RTC_ADDRESS);
+    int len = snprintf(rtc_content, sizeof(rtc_content), "%d-%d-%d %02d:%02d\n", current_date, 
+               current_month, current_year, current_hours, current_minutes);
+    rtx_setTextSize(1);
+    rtx_setTextColor(WHITE);
+    rtx_setCursor(33,0);
+    rtx_println(rtc_content);
+    display_update();
+}
+
 /*  RTC READ REGISTER
 *   \brief: Function that reads slave register content
 *   \Parameters:

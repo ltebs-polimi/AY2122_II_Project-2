@@ -29,19 +29,30 @@
 
 uint8_t seconds = 0;
 
-char rtc_content[64] = {};
+
 uint8_t rtc_data_register;
 
 int main(void)
 {
     CyDelay(1000);
-   /* Pin_Reset_Write(0x00);
-    CyDelay(10);
-    Pin_Reset_Write(0xFF);*/
     
+    //Global variables initialization
     state = 0;
     power_on = 1;
     battery_level = 55;
+    flag_bluetooth = 0;
+    flag_bluetooth_old = 1;
+    
+    current_seconds_old = 0;
+    current_minutes_old = 0;
+    current_hours_old = 0;
+    current_date_old = 0;
+    current_month_old = 0;
+    current_year_old = 0;
+    
+    glucose_concentration = 100;
+    glucose_concentration_old = 0;
+    
     CyGlobalIntEnable;
         
     I2CMASTER_Start();
@@ -57,9 +68,8 @@ int main(void)
       Seconds, Minutes, Hours, Date, Month, Year
       Then run the program, re-comment the line and re-run the program
     */
-    //set_RTC(0x40,0x06,0x12,0x12,MAY,Y_2022);
+    //set_RTC(0x15,0x38,0x08,0x18,MAY,Y_2022);
     
-    uint8_t glucose_concentration = 100;
     uint8_t glucose_concentration_from_memory = 0;
     char flag = 0;
     char unit[] = "mg/dl";
@@ -141,16 +151,16 @@ int main(void)
                 if(power_on){
                     power_on = 0;
                     display_battery_level(battery_level);
+
                 }
                 
-                rtc_read_time(RTC_ADDRESS);
-                len = snprintf(rtc_content, sizeof(rtc_content), "%d-%d-%d %02d:%02d\n", current_date, 
-                               current_month, current_year, current_hours, current_minutes);
-                rtx_setTextSize(1);
-                rtx_setTextColor(WHITE);
-                rtx_setCursor(40,0);
-                rtx_println(rtc_content);
-                display_update();
+                rtc_set_time();
+                
+                display_bluetooth_connection(flag_bluetooth);
+                
+                OLED_display_glucose(glucose_concentration);
+                
+                OLED_display_indicator();
             
             break;
             

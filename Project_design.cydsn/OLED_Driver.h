@@ -13,6 +13,8 @@
  * ========================================================================
 */
 #include <project.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "Globals.h"
 
@@ -56,6 +58,9 @@
     
     void OLED_welcome_screen(void);
     void display_battery_level(uint8_t battery_level);
+    void display_bluetooth_connection(uint8_t flag_bluetooth);
+    void OLED_display_glucose();
+    void OLED_display_indicator();
 
 #endif
 /* [] END OF FILE */
