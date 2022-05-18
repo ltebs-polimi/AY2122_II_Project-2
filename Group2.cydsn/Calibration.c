@@ -17,10 +17,10 @@
 
 const uint16 calibrate_TIA_resistor_list[] = {20, 30, 40, 80, 120, 250, 500, 1000}; //8 possible levels of resistance [in kOhm]
 uint16 static ADC_value;
-uint16 max_idac_value;
-uint16 min_idac_value;
-uint16 max_adc_value;
-uint16 min_adc_value;
+uint16_t max_idac_value;
+uint16_t min_idac_value;
+uint16_t max_adc_value;
+uint16_t min_adc_value;
 
 /***************************************
 * Forward function references
@@ -36,31 +36,31 @@ static void Calibrate_Hardware_Sleep(void);
 * Summary:
 *  Calibrate the TIA circuit each time the current gain settings (for the Opamp in input of the ADC) are changed
 *
-* Global variables:
-*  uint8 TIA_resistor_value_index: index of whick TIA resistor to use, Supplied by USB input
+* Parameters:
+*  uint8 resistor_index: index of which TIA resistor to use
 *
 *
 *
 *
 *******************************************************************************/
 
-//void calibrate_TIA(uint8 TIA_resistor_value_index, uint8 ADC_buffer_index) {
-void calibrate_TIA(void) {
+void calibrate_TIA(uint8_t resistor_index) {
     // The IDAC only 
     
     IDAC_calibrate_Start();
     IDAC_calibrate_SetValue(0);  //set IDAC value to 0 uA
+    
     // start the hardware required
     Calibrate_Hardware_Wakeup();
     CyDelay(100);
-    // decide what currents to use based on TIA resistor and ADC buffer settings
-    uint16 resistor_value = calibrate_TIA_resistor_list[TIA_resistor_value_index]; // select a resistor value among the list of 8 possible resistors of the TIA
-
-    uint16 IDAC_setting = 0;
     
-    // set input current to zero and read ADC
+    // decide what currents to use based on TIA resistor and ADC buffer settings
+    uint16 resistor_value = calibrate_TIA_resistor_list[resistor_index]; // select a resistor value among the list of 8 possible resistors of the TIA
+
+    
+    // Start to read the ADC
     ADC_SigDel_StartConvert();
-    calibrate_step(IDAC_setting, 2); // user defined function to set the IDAC value and then read with the ADC --> in this case 0 current is set
+
     
     // calculate the IDAC value needed to get a 1 Volt in the ADC
     // the 8000 is because the IDAC has a 1/8 uA per bit and 8000=1000mV/(1/8 uA per bit)
@@ -73,26 +73,89 @@ void calibrate_TIA(void) {
     // We set different values for the IDAC: highest, 2nd highest, 2nd loweest and lowest
     IDAC_calibrate_SetPolarity(IDAC_calibrate_SINK); // positive polarity
     calibrate_step(transfer_int, 0);
-    calibrate_step(transfer_int/2, 1);
+
     IDAC_calibrate_SetPolarity(IDAC_calibrate_SOURCE); //negative polarity
-    calibrate_step(transfer_int/2, 3);
-    calibrate_step(transfer_int, 4);
+    calibrate_step(transfer_int, 1);
+    
     IDAC_calibrate_SetValue(0);
     Calibrate_Hardware_Sleep();
     
     max_idac_value= CalibrationBuffer[0]; //look at the calibrate_step function to understand the indexes
-    min_idac_value= CalibrationBuffer[4];;
-    max_adc_value= CalibrationBuffer[5];
-    min_adc_value= CalibrationBuffer[9];
+    min_idac_value= CalibrationBuffer[1];;
+    max_adc_value= CalibrationBuffer[2];
+    min_adc_value= CalibrationBuffer[3];
     
     //Linear regression by using the max and min values in order to extract the uA per ADC count
-    
-    float32 uAs = (float)(max_idac_value + min_idac_value) / 8.0; //sum of IDAC values (in bit) based on the calibrate step function 
-    uA_per_adc_count = uAs / (max_adc_value - min_adc_value); // calculate the uA per ADC count value
+    float uAs = (float)(max_idac_value + min_idac_value) / 8.0; //sum of IDAC values (in bit) based on the calibrate step function 
+    uA_per_adc_count = uAs / (float)(max_adc_value - min_adc_value); // calculate the uA per ADC count value
     
     TIA_Calibration_ended_Flag = true;
     
+    UART_Debug_PutString("END OF CALIBRATION\r\n");
+    
+    len= snprintf(str, sizeof(str), "uA per ADC count: %.8f", uA_per_adc_count);
+    UART_Debug_PutString(str);
+    
 }
+
+
+//void calibrate_TIA(uint8 TIA_resistor_value_index, uint8 ADC_buffer_index) {
+//void calibrate_TIA(uint8_t resistor_index) {
+//    // The IDAC only 
+//    
+//    IDAC_calibrate_Start();
+//    IDAC_calibrate_SetValue(0);  //set IDAC value to 0 uA
+//    
+//    // start the hardware required
+//    Calibrate_Hardware_Wakeup();
+//    CyDelay(100);
+//    
+//    // decide what currents to use based on TIA resistor and ADC buffer settings
+//    uint16 resistor_value = calibrate_TIA_resistor_list[resistor_index]; // select a resistor value among the list of 8 possible resistors of the TIA
+//
+//    
+//    // Start to read the ADC
+//    ADC_SigDel_StartConvert();
+//
+//    
+//    int max_current_bit=255;
+//    int min_current_bit=0;
+//
+//    // We set different values for the IDAC: highest, 2nd highest, 2nd loweest and lowest
+//    IDAC_calibrate_SetPolarity(IDAC_calibrate_SINK); // positive polarity
+//    calibrate_step(max_current_bit, 0);
+//    calibrate_step(min_current_bit, 1);
+//    
+//    IDAC_calibrate_SetValue(0);
+//    Calibrate_Hardware_Sleep();
+//    
+//    max_idac_value= CalibrationBuffer[0]; //look at the calibrate_step function to understand the indexes
+//    min_idac_value= CalibrationBuffer[1];;
+//    max_adc_value= CalibrationBuffer[2];
+//    min_adc_value= CalibrationBuffer[3];
+//
+//    len= snprintf(str, sizeof(str), "max idac value: %u\r\n", CalibrationBuffer[0]);
+//    UART_Debug_PutString(str);
+//    len= snprintf(str, sizeof(str), "max adc count: %u\r\n", CalibrationBuffer[2]);
+//    UART_Debug_PutString(str);
+//    len= snprintf(str, sizeof(str), "min idac value: %u\r\n", CalibrationBuffer[1]);
+//    UART_Debug_PutString(str);
+//    len= snprintf(str, sizeof(str), "min adc count: %u\r\n", CalibrationBuffer[3]);
+//    UART_Debug_PutString(str);
+//    
+//    
+//    //Linear regression by using the max and min values in order to extract the uA per ADC count
+//    float uAs = (float)(max_idac_value + min_idac_value) / 8.0; //sum of IDAC values (in bit) based on the calibrate step function 
+//    uA_per_adc_count = uAs / (float)(max_adc_value - min_adc_value); // calculate the uA per ADC count value
+//    
+//    TIA_Calibration_ended_Flag = true;
+//    
+//    UART_Debug_PutString("END OF CALIBRATION\r\n");
+//    
+//    len= snprintf(str, sizeof(str), "uA per ADC count: %.8f", uA_per_adc_count);
+//    UART_Debug_PutString(str);
+//    
+//}
 
 /******************************************************************************
 * Function Name: calibrate_step
@@ -115,9 +178,9 @@ static void calibrate_step(uint16 IDAC_value, uint8 IDAC_index) {
     
     IDAC_calibrate_SetValue(IDAC_value);
     CyDelay(100);  // allow the ADC to settle
-    ADC_value = ADC_SigDel_GetResult16();
+    ADC_value = ADC_SigDel_Read32();
     CalibrationBuffer[IDAC_index] = IDAC_value; 
-    CalibrationBuffer[IDAC_index+5] = ADC_value;    
+    CalibrationBuffer[IDAC_index+2] = ADC_value;    
         
 }
 

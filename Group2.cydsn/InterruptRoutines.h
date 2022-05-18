@@ -11,7 +11,7 @@
     #include "cytypes.h"
     #include "stdio.h"
     
-    #define TRANMSIT_BUFFER_SIZE 16
+
     
     CY_ISR_PROTO (Custom_ISR_RX);
     CY_ISR_PROTO (dacInterrupt);

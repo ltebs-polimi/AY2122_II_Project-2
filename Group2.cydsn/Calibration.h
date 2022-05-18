@@ -23,7 +23,7 @@
 #define CALIBRATION_BUFFER_SIZE 10 
 
       
-uint16 CalibrationBuffer[CALIBRATION_BUFFER_SIZE];
+uint16_t CalibrationBuffer[CALIBRATION_BUFFER_SIZE];
 
 
 /***************************************
@@ -38,7 +38,7 @@ extern float32 R_analog_route;
 /***************************************
 *        Function Prototypes
 ***************************************/  
-void calibrate_TIA(void);
+void calibrate_TIA(uint8_t resistor_index);
 
 #endif
 /* [] END OF FILE */

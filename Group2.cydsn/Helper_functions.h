@@ -37,7 +37,7 @@ void helper_HardwareWakeup(void);
 
 uint16 helper_Convert2Dec(uint8 array[], uint8 len);
 
-int16 helper_search_max(int16 current_array[], uint16 dimensione_array);
+int16 helper_search_max(float current_array[], uint16 dimensione_array);
 
 #endif
 

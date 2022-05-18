@@ -49,6 +49,9 @@ UPDATE_INITIAL = "C"
 UPDATE_FINAL= "D"
 UPDATE_TIME= "E"
 
+current_CV_array=[]
+potential_CV_array=[]
+count=0
 # Global variables
 final_value=int()
 initial_value=int()
@@ -97,6 +100,7 @@ class SerialWorker(QRunnable):
         self.baudrate = 9600 # hard coded but can be a global variable, or an input param
         self.signals = SerialWorkerSignals()
 
+
     @pyqtSlot()
     def run(self):
         """!
@@ -112,9 +116,9 @@ class SerialWorker(QRunnable):
                 if self.port.is_open:
 
                     self.send('A')
-                    time.sleep(1)
+                    time.sleep(0.1)
                     self.send('z')
-                    time.sleep(1)
+                    time.sleep(0.1)
 
                     if (self.read() == "Glucose $$$"):
                         CONN_STATUS = True
@@ -586,6 +590,7 @@ class Ui_ClinicianWindow(object):
         ClinicianWindow.setTabOrder(self.graphWidget_AMP, self.Start_amp_button)
         ClinicianWindow.setTabOrder(self.Start_amp_button, self.Draw_CV_button)
 
+        #scan continuously the serial port
         self.serialscan()
 
     def retranslateUi(self, ClinicianWindow):
@@ -635,6 +640,8 @@ class Ui_ClinicianWindow(object):
             # Add legend
         self.graphWidget_CV.addLegend()
         self.graphWidget_AMP.addLegend()
+
+
 
 
         # Connect update buttons
@@ -741,12 +748,19 @@ class Ui_ClinicianWindow(object):
 
 
         self.serial_worker.send(char)
-        time.sleep(1)
+        time.sleep(0.1)
 
         if (char == UPDATE_SCAN):
             logging.info("Received: {}".format(self.Scan_CV_textEdit.toPlainText()))
             scan_rate = int(self.Scan_CV_textEdit.toPlainText())
-            self.serial_worker.port.write([scan_rate])
+
+            b=int(scan_rate>>8)
+            c=int(scan_rate & (0xFF))
+            self.serial_worker.port.write([b])
+            time.sleep(0.1)
+            self.serial_worker.port.write([c])
+            time.sleep(0.1)  
+
             UPDATE_SCAN_FLAG=True
 
         elif (char == UPDATE_INITIAL):
@@ -757,9 +771,9 @@ class Ui_ClinicianWindow(object):
             b=int(initial_value>>8)
             c=int(initial_value & (0xFF))
             self.serial_worker.port.write([b])
-            time.sleep(1)
+            time.sleep(0.1)
             self.serial_worker.port.write([c])
-            time.sleep(1)     
+            time.sleep(0.1)     
 
         elif (char == UPDATE_FINAL):
             logging.info("Received: {}".format(self.Final_CV_textEdit.toPlainText()))
@@ -769,9 +783,9 @@ class Ui_ClinicianWindow(object):
             b=int(final_value>>8)
             c=int(final_value & (0xFF))
             self.serial_worker.port.write([b])
-            time.sleep(1)
+            time.sleep(0.1)
             self.serial_worker.port.write([c])
-            time.sleep(1)     
+            time.sleep(0.1)     
 
         elif (char == UPDATE_TIME):
             logging.info("Received: {}".format(self.Time_CV_textEdit.toPlainText()))
@@ -781,13 +795,13 @@ class Ui_ClinicianWindow(object):
             UPDATE_TIME_FLAG=True
 
         self.serial_worker.send('z')
-        time.sleep(1)
+        time.sleep(0.1)
         
         if (self.serial_worker.read() == "CV ready"):
-
+            
             if UPDATE_SCAN_FLAG:
                 
-                time_value = int((final_value - initial_value)/scan_rate)
+                time_value = int(((final_value - initial_value)/scan_rate)*2)
                 time_str = str(time_value)
 
                 logging.info("Final_value: {}".format(final_value))
@@ -804,8 +818,8 @@ class Ui_ClinicianWindow(object):
 
             self.Draw_CV_button.setDisabled(False)
             self.Ready_CV_label.setStyleSheet("background-color:rgb(0,255,0);")
-            self.Ready_CV_label.setText("READY")    
-            time.sleep(1)
+            self.Ready_CV_label.setText("READY")  
+            time.sleep(0.1)
 
 
     def check_serialport_status(self, port_name, status):
@@ -851,8 +865,14 @@ class Ui_ClinicianWindow(object):
         """!
         @brief Draw the plots.
         """
-        self.timer.start()        
+        self.serial_worker.send('F')
+        time.sleep(0.1)
+        self.serial_worker.send('z')
+        time.sleep(0.1)
+
+        self.timer.start()     
         self.CV_line = self.plot(self.graphWidget_CV, self.x, self.y, 'CV','r')
+
 
 
     @pyqtSlot()

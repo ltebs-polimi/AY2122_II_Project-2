@@ -52,7 +52,8 @@ void user_start_cv_run(void){
         CyDelay(1);  // let the electrode voltage settle
         ADC_SigDel_StartConvert();  // start the converstion process of the delta sigma adc so it will be ready to read when needed
         CyDelay(20);
-        //ADC_array[0].data[lut_index] = ADC_SigDel_GetResult16();  // Hack, get first adc reading, timing element doesn't reverse for some reason
+        
+        int16 adc_reading = ADC_SigDel_GetResult16();  // Hack, get first adc reading, timing element doesn't reverse for some reason
         isr_dac_Enable();  // enable the interrupts to start the dac
         isr_adc_Enable();  // and the adc
     }

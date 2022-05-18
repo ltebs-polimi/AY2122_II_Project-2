@@ -6,8 +6,8 @@
 *
 *********************************************************************************/
 
-#include "Helper_functions.h"
 
+#include "Helper_functions.h"
 
 
 /******************************************************************************
@@ -118,7 +118,7 @@ uint16 helper_Convert2Dec(uint8 array[], uint8 len){
 *   Is it enough to search for the maximum in this way?
 *******************************************************************************/
 
-int16 helper_search_max(int16 current_array[], uint16 dimensione_array){
+int16 helper_search_max(float current_array[], uint16 dimensione_array){
     
     int max_rel=0;
     int potential_max_current=0;

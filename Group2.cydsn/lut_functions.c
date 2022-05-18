@@ -30,8 +30,8 @@ extern char LCD_str[];  // for debug
 *******************************************************************************/
 
 uint16 LUT_MakeTriangle_Wave(uint16 start_value, uint16 end_value) {
-    uint16 _lut_index = 0;  // start at the beginning of the lut
     
+    uint16 _lut_index = 0;  // start at the beginning of the lut
     
     _lut_index = LUT_make_line(start_value, end_value, 0);
     
@@ -66,6 +66,7 @@ uint16 LUT_MakeTriangle_Wave(uint16 start_value, uint16 end_value) {
 *******************************************************************************/
 
 uint16 LUT_make_line(uint16 start, uint16 end, uint16 index) {
+    
     if (start < end) {
         for (uint16 value = start; value <= end; value++) {  //increasing part of the triangular wave
             waveform_CV_lut[index] = value;

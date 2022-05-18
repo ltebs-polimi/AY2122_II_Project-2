@@ -11,7 +11,7 @@
 **********************************************************************************/
 
 #include <project.h>
-#include "stdio.h"
+#include <stdio.h>
 #include "stdlib.h"
 // local files
 #include "Calibration.h"
@@ -21,7 +21,7 @@
 #include "InterruptRoutines.h"
 #include "user_selections.h"
 
-char DataBuffer[TRANMSIT_BUFFER_SIZE];
+
 uint8 ch_received;
 char str[64];
 
@@ -48,8 +48,7 @@ int main(void)
     /* Place your initialization/startup code here (e.g. MyInst_Start()) */
     helper_HardwareSetup();  //user-defined function to initialize the HW 
     
-    
-    ADC_SigDel_SelectConfiguration(2, DO_NOT_RESTART_ADC); // select the configuration to be used for the ADC (2 possible configurations --> SERVONO ???)
+    ADC_SigDel_SelectConfiguration(1, DO_NOT_RESTART_ADC); // select the configuration to be used for the ADC (2 possible configurations --> SERVONO ???)
     
     
     //LOAD VALUES FROM THE EEPROM --> TO BE ADDED (set the Load_EEPROM_Flag=true when ended)
@@ -57,9 +56,10 @@ int main(void)
     
     //Start the UART (used by the BT) and the corresponding isr
     UART_Start();
+    UART_Debug_Start();
 
     
-    //Initialize other isr
+    //Initialize all interrupts
     isr_dac_StartEx(dacInterrupt);
     isr_dac_Disable();  
     
@@ -69,8 +69,9 @@ int main(void)
     isr_adcAmp_StartEx(adcAmpInterrupt);
     isr_adcAmp_Disable();
     
-    //TIA calibration
-    calibrate_TIA();  // manca gestione della scelta della resistenza da usare per calibrare
+    //TIA calibration --> potrebbe essere skippata settando direttamente un valore 
+    //TIA_resistor_value_index = 0;
+    //calibrate_TIA(TIA_resistor_value_index);  // manca gestione della scelta della resistenza da usare per calibrare
     
     
     //Start the watchdog timer --> SERVE DAVVERO??
@@ -123,6 +124,11 @@ int main(void)
                 user_set_isr_timer(selected_scan_rate);
                 Update_scanrate_Flag=true;
                 
+                UART_Debug_PutString("SET SCAN RATE\r\n");
+                
+                len= snprintf(str, sizeof(str), "scan rate: %d\r\n", selected_scan_rate);
+                UART_Debug_PutString(str);
+                
                 if(Update_scanrate_Flag && Update_startvalue_Flag && Update_endvalue_Flag){
                     
                     
@@ -142,6 +148,11 @@ int main(void)
                 start_dac_value = (command[1]<<8) | (command[2]&(0xFF));
                 Update_startvalue_Flag=true;
                 
+                UART_Debug_PutString("SET INITIAL CV VALUE\r\n");
+                
+                len= snprintf(str, sizeof(str), "Initial CV value: %d\r\n", start_dac_value);
+                UART_Debug_PutString(str);
+                
                 if((Update_scanrate_Flag||Update_timevalue_Flag) && Update_startvalue_Flag && Update_endvalue_Flag){
                     
                     CV_ready_Flag = true;
@@ -158,7 +169,13 @@ int main(void)
                 
                 end_dac_value = (command[1]<<8) | (command[2]&(0xFF));
                 
-                Update_endvalue_Flag=true;                
+                Update_endvalue_Flag=true;    
+                
+                
+                UART_Debug_PutString("SET FINAL CV VALUE\r\n");
+                
+                len= snprintf(str, sizeof(str), "Final CV value: %d\r\n", end_dac_value);
+                UART_Debug_PutString(str);
 
                 if((Update_scanrate_Flag||Update_timevalue_Flag) && Update_startvalue_Flag && Update_endvalue_Flag){
                     
@@ -178,7 +195,7 @@ int main(void)
                 
                 if(Update_startvalue_Flag && Update_endvalue_Flag && Update_timevalue_Flag){
                     
-                    selected_scan_rate = (end_dac_value - start_dac_value)/selected_time;
+                    selected_scan_rate = ((end_dac_value - start_dac_value)/selected_time)*2;
                     
                     CV_ready_Flag = true;
                     // Send a UART message so that the red "NOT READY LABEL", turns into a green "READY" label

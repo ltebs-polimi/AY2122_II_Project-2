@@ -74,7 +74,7 @@ uint16 waveform_amp_lut[MAX_amp_LUT_SIZE];  // look up table to store chronoampe
 uint16 lut_index;  // look up table index
 uint16_t lut_length; // look up table length
 uint16 ADC_CV_array[MAX_CV_LUT_SIZE]; //array to store the ADC readings when performing a CV scan
-float32 uA_per_adc_count;
+float uA_per_adc_count;
 
 /* Variables for CV */
 uint16 start_dac_value;
@@ -84,10 +84,13 @@ uint16 selected_scan_rate;
 
 /* Variables for the received commands via UART */
 #define MAX_COMMAND_LENGTH 40
+#define TRANMSIT_BUFFER_SIZE 16
 
 uint8_t command[MAX_COMMAND_LENGTH];   
 uint8_t command_lenght;
-
+char str[64];
+int len;
+char DataBuffer[TRANMSIT_BUFFER_SIZE];
 
 #endif    
 /* [] END OF FILE */
