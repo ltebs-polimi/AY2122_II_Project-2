@@ -1,5 +1,3 @@
-# NB SETTARE TIME SLEEP (0.1) DOPO LE SEND PER COMUNICAZIONE CON BLUETOOTH
-
 from pickle import TRUE
 import sys
 
@@ -28,6 +26,7 @@ from PyQt5.QtWidgets import (
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 
 import serial
 import serial.tools.list_ports
@@ -43,21 +42,35 @@ from random import randint
 CONN_STATUS = False
 UPDATE_SCAN_FLAG=False 
 UPDATE_TIME_FLAG=False 
+RECEIVE_CV_DATA= False
+FINISHED_CV_GRAPH = False
+PACKET_ARRIVED = False
+READ_PACKET_DATA= False
+LIMIT_REACHED= False
 
 UPDATE_SCAN = "B"
 UPDATE_INITIAL = "C"
 UPDATE_FINAL= "D"
 UPDATE_TIME= "E"
 
-current_CV_array=[]
-potential_CV_array=[]
-count=0
+
+port_name_global = 0 
+current_CV = int(0)
+potential_CV = int(0)
+current_CV_H = int(0)
+current_CV_L = int(0)
+potential_CV_H= int(0)
+potential_CV_L= int(0)
+stringa_prova=''
+
+
 # Global variables
 final_value=int()
 initial_value=int()
 time_value=int()
 scan_rate=int()
 
+serial_ports_array = []
 
 # Logging config
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -107,6 +120,7 @@ class SerialWorker(QRunnable):
         @brief Estabilish connection with desired serial port.
         """
         global CONN_STATUS
+        global port_name_global
 
         if not CONN_STATUS:
             try:
@@ -123,12 +137,20 @@ class SerialWorker(QRunnable):
                     if (self.read() == "Glucose $$$"):
                         CONN_STATUS = True
                         self.signals.status.emit(self.port_name, 1)
+                        port_name_global=self.port_name
                         time.sleep(1)
+
+
+                    else:
+                        self.is_killed = True
+                        self.killed()
+
 
             except serial.SerialException:
                 logging.info("Error with port {}.".format(self.port_name))
                 self.signals.status.emit(self.port_name, 0)
                 time.sleep(0.01)
+
        
 
     @pyqtSlot()
@@ -137,6 +159,7 @@ class SerialWorker(QRunnable):
         @brief Basic function to send a single char on serial port.
         """
         try:
+
             self.port.write(char.encode('utf-8'))
             logging.info("Written {} on port {}.".format(char, self.port_name))
         except:
@@ -154,10 +177,13 @@ class SerialWorker(QRunnable):
             while(self.port.in_waiting>0):
                 stringa_test+=self.port.read().decode('utf-8', errors='replace')
                 logging.info("Received: {}".format(stringa_test))
+                logging.info( self.port.in_waiting )
 
             return stringa_test
         except:
             logging.info("Could not receive {} on port {}.".format(stringa_test, self.port_name))
+
+
    
     @pyqtSlot()
     def killed(self):
@@ -165,13 +191,208 @@ class SerialWorker(QRunnable):
         @brief Close the serial port before closing the app.
         """
         global CONN_STATUS
-        if self.is_killed and CONN_STATUS:
+        if self.is_killed:
             self.port.close()
             time.sleep(0.01)
             CONN_STATUS = False
             self.signals.device_port.emit(self.port_name)
 
         logging.info("Killing the process")
+
+
+#########################
+# GRAPH_WORKER_SIGNALS #
+#########################
+class UpdateGraphSignals(QObject):
+    """!
+    @brief Class that defines the signals available to a UpdateGraphworker.
+
+    Available signals (with respective inputs) are:
+        - plot_values:
+            int --> x value
+            int --> y value
+    """
+    plot_values = pyqtSignal(int, int)
+    data_ready_signal = pyqtSignal(object)
+
+
+
+
+
+######################
+# UPDATE GRAPH WORKER#
+######################
+class UpdateGraphWorker(QRunnable):
+    """!
+    @brief Main class for serial communication: handles connection with device.
+    """
+    def __init__(self, port_name):
+        """!
+        @brief Init worker.
+        """
+        super().__init__()
+
+        self.port_graph = serial.Serial()
+        self.port_graph_name = port_name
+        self.baudrate_graph = 9600 # hard coded but can be a global variable, or an input param
+
+        self.port_graph = serial.Serial(port=self.port_graph_name, baudrate=self.baudrate_graph,
+                                write_timeout=0, timeout=2)  
+
+
+        logging.info("in update graph worker init")
+
+        self.graph_signals = UpdateGraphSignals()
+
+
+
+    @pyqtSlot()
+    def run(self):
+        """!
+        @brief Estabilish connection with desired serial port.
+        """
+
+        global FINISHED_CV_GRAPH
+        global potential_CV
+        global LIMIT_REACHED
+        global RECEIVE_CV_DATA
+        global initial_value
+        global final_value
+        global READ_PACKET_DATA
+
+     
+        
+        if RECEIVE_CV_DATA:
+            
+            while FINISHED_CV_GRAPH == False:
+
+                self.read_CV_plot()
+    
+
+
+    @pyqtSlot()
+    def read_CV_plot(self):
+        """!
+        @brief Basic function to send a single char on serial port.
+        """
+        global FINISHED_CV_GRAPH
+        global RECEIVE_CV_DATA
+        global current_CV_H
+        global current_CV_L
+        global PACKET_ARRIVED 
+        global READ_PACKET_DATA
+        global potential_CV
+        global LIMIT_REACHED
+        global initial_value
+        global final_value
+        global potential_CV_H
+        global potential_CV_L
+        global current_CV
+        global stringa_prova
+        stringa_current_H=''
+        stringa_current_L=''
+        stringa_potential_H=''
+        stringa_potential_L=''
+        A_index=0
+        b_index=0
+        c_index=0
+        d_index=0
+        z_index=0
+
+        PACKET_ARRIVED=False
+        READ_PACKET_DATA=False
+
+        if RECEIVE_CV_DATA:
+
+            if(self.port_graph.in_waiting>0):
+                stringa_prova += self.port_graph.read().decode('utf-8', errors='replace')
+                logging.info(stringa_prova)
+                PACKET_ARRIVED=True
+
+            if PACKET_ARRIVED == True and stringa_prova[0] == 'A' and stringa_prova[len(stringa_prova)-1] == 'z':
+                logging.info("packet_arrived")
+                logging.info(len(stringa_prova))               
+                for i in range(len(stringa_prova)):
+                    if(stringa_prova[i])=='A':
+                        A_index=i
+
+                    if(stringa_prova[i])=='b':
+                        b_index=i
+
+                    if(stringa_prova[i])=='c':
+                        c_index=i
+
+                    if(stringa_prova[i])=='d':
+                        d_index=i
+
+                    if(stringa_prova[i])=='z':
+                        z_index=i
+
+
+                logging.info(A_index)
+                logging.info(b_index)
+                logging.info(c_index)
+                logging.info(d_index)
+                logging.info(z_index)
+
+                stringa_current_H = stringa_prova[A_index+1:b_index]
+                stringa_current_L= stringa_prova[b_index+1:c_index]
+                stringa_potential_H= stringa_prova[c_index+1:d_index]
+                stringa_potential_L= stringa_prova[d_index+1:z_index]
+
+                logging.info(stringa_current_H)
+                logging.info(stringa_current_L)
+                logging.info(stringa_potential_H)
+                logging.info(stringa_potential_L)
+            
+                PACKET_ARRIVED = False
+                READ_PACKET_DATA = True
+
+
+            if(READ_PACKET_DATA == True):
+                current_CV = (int(stringa_current_H) << 8) | (int(stringa_current_L))
+                potential_CV = (int(stringa_potential_H) << 8) | (int(stringa_potential_L))
+
+                logging.info(current_CV)
+                logging.info(potential_CV)
+
+                READ_PACKET_DATA= False
+
+                self.graph_signals.plot_values.emit(potential_CV, current_CV) 
+
+                stringa_prova=''
+                stringa_current_H=''
+                stringa_current_L=''
+                stringa_potential_H=''
+                stringa_potential_L=''
+                A_index=0
+                b_index=0
+                c_index=0
+                d_index=0
+                z_index=0
+
+                self.port_graph.reset_input_buffer()
+
+
+            if(potential_CV == final_value):
+                LIMIT_REACHED = True
+
+            if(potential_CV == initial_value and LIMIT_REACHED):
+                FINISHED_CV_GRAPH = True
+
+    @pyqtSlot()
+    def send_graph(self, char):
+        """!
+        @brief Basic function to send a single char on serial port.
+        """
+        try:
+
+            self.port_graph.write(char.encode('utf-8'))
+            logging.info("Written {} on port {}.".format(char, port_name_global))
+        except:
+            logging.info("Could not write {} on port {}.".format(char, port_name_global))
+
+
 
 class Ui_ClinicianWindow(object):
     def setupUi(self, ClinicianWindow):
@@ -186,12 +407,9 @@ class Ui_ClinicianWindow(object):
         self.CHECK_TOGGLE= bool(True)
 
         # Some random data
-        self.x = list(range(100))  # 100 time points
-        self.y = [randint(0,100) for _ in range(100)]  # 100 data points
+        self.x = [] 
+        self.y = []  
 
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(50)
-        self.timer.timeout.connect(self.update_plot_data)
 
 
         ClinicianWindow.setObjectName("ClinicianWindow")
@@ -213,16 +431,16 @@ class Ui_ClinicianWindow(object):
         self.horizontalLayout_3.setContentsMargins(40, 10, 40, -1)
         self.horizontalLayout_3.setSpacing(200)
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
-        self.Connection_comboBox = QtWidgets.QComboBox(self.frame)
+        self.Connection_port_label = QtWidgets.QLabel(self.frame)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.Connection_comboBox.sizePolicy().hasHeightForWidth())
-        self.Connection_comboBox.setSizePolicy(sizePolicy)
-        self.Connection_comboBox.setMinimumSize(QtCore.QSize(150, 28))
-        self.Connection_comboBox.setMaximumSize(QtCore.QSize(16777215, 16777215))
-        self.Connection_comboBox.setObjectName("Connection_comboBox")
-        self.horizontalLayout_3.addWidget(self.Connection_comboBox)
+        sizePolicy.setHeightForWidth(self.Connection_port_label.sizePolicy().hasHeightForWidth())
+        self.Connection_port_label.setSizePolicy(sizePolicy)
+        self.Connection_port_label.setMinimumSize(QtCore.QSize(150, 28))
+        self.Connection_port_label.setMaximumSize(QtCore.QSize(16777215, 16777215))
+        self.Connection_port_label.setObjectName("Connection_port_label")
+        self.horizontalLayout_3.addWidget(self.Connection_port_label)
         self.Connection_button = QtWidgets.QPushButton(self.frame,  clicked = lambda: self.on_toggle(self.CHECK_TOGGLE))
         self.Connection_button.setMinimumSize(QtCore.QSize(150, 28))
         font = QtGui.QFont()
@@ -573,53 +791,6 @@ class Ui_ClinicianWindow(object):
         self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
         ClinicianWindow.setCentralWidget(self.centralwidget)
 
-        self.retranslateUi(ClinicianWindow)
-        self.tabWidget.setCurrentIndex(0)
-        QtCore.QMetaObject.connectSlotsByName(ClinicianWindow)
-        ClinicianWindow.setTabOrder(self.Connection_button, self.Connection_label)
-        ClinicianWindow.setTabOrder(self.Connection_label, self.Connection_comboBox)
-        ClinicianWindow.setTabOrder(self.Connection_comboBox, self.Final_update_button)
-        ClinicianWindow.setTabOrder(self.Final_update_button, self.Clear_CV_button)
-        ClinicianWindow.setTabOrder(self.Clear_CV_button, self.Initial_CV_textEdit)
-        ClinicianWindow.setTabOrder(self.Initial_CV_textEdit, self.Initial_update_button)
-        ClinicianWindow.setTabOrder(self.Initial_update_button, self.Final_CV_textEdit)
-        ClinicianWindow.setTabOrder(self.Final_CV_textEdit, self.tabWidget)
-        ClinicianWindow.setTabOrder(self.tabWidget, self.Scan_CV_textEdit)
-        ClinicianWindow.setTabOrder(self.Scan_CV_textEdit, self.Scan_update_button)
-        ClinicianWindow.setTabOrder(self.Scan_update_button, self.graphWidget_AMP)
-        ClinicianWindow.setTabOrder(self.graphWidget_AMP, self.Start_amp_button)
-        ClinicianWindow.setTabOrder(self.Start_amp_button, self.Draw_CV_button)
-
-        #scan continuously the serial port
-        self.serialscan()
-
-    def retranslateUi(self, ClinicianWindow):
-        _translate = QtCore.QCoreApplication.translate
-        ClinicianWindow.setWindowTitle(_translate("ClinicianWindow", "MainWindow"))
-        self.Connection_button.setText(_translate("ClinicianWindow", "PushButton"))
-        self.Connection_label.setText(_translate("ClinicianWindow", "NOT CONNECTED"))
-        self.Time_CV_label.setText(_translate("ClinicianWindow", "TIME DURATION (sec):"))
-        self.Initial_value_CV_label.setText(_translate("ClinicianWindow", "SET INITIAL VALUE (mV):"))
-        self.Final_value_CV_label.setText(_translate("ClinicianWindow", "SET FINAL VALUE (mV):"))
-        self.Scan_update_button.setText(_translate("ClinicianWindow", "UPDATE"))
-        self.Initial_update_button.setText(_translate("ClinicianWindow", "UPDATE"))
-        self.Scanrate_CV_label.setText(_translate("ClinicianWindow", "SET SCAN RATE (mV/sec):"))
-        self.Final_update_button.setText(_translate("ClinicianWindow", "UPDATE"))
-        self.Time_update_button.setText(_translate("ClinicianWindow", "UPDATE"))
-        self.Draw_CV_button.setText(_translate("ClinicianWindow", "DRAW"))
-        self.Clear_CV_button.setText(_translate("ClinicianWindow", "CLEAR"))
-        self.Ready_CV_label.setText(_translate("ClinicianWindow", "NOT READY"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), _translate("ClinicianWindow", "Cyclic Voltammetry"))
-        self.Start_amp_button.setText(_translate("ClinicianWindow", "START"))
-        self.Stop_amp_button.setText(_translate("ClinicianWindow", "STOP"))
-        self.Fetch_amp_button.setText(_translate("ClinicianWindow", "FETCH FROM MEMORY"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), _translate("ClinicianWindow", "Chronoamperometry"))
-        self.Value_data_label.setText(_translate("ClinicianWindow", "VALUE"))
-        self.Start_data_button.setText(_translate("ClinicianWindow", "START MEASUREMENT"))
-        self.Glucose_data_label.setText(_translate("ClinicianWindow", "GLUCOSE CONCENTRATION (mg/dL)"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("ClinicianWindow", "Data Visualization"))
-
-
         # Plot settings
             # Add grid
         self.graphWidget_CV.showGrid(x=True, y=True)
@@ -642,22 +813,90 @@ class Ui_ClinicianWindow(object):
         self.graphWidget_AMP.addLegend()
 
 
-
-
         # Connect update buttons
         self.Scan_update_button.clicked.connect(lambda state, x=UPDATE_SCAN: self.update_values_CV(state, x))
         self.Initial_update_button.clicked.connect(lambda state, x=UPDATE_INITIAL: self.update_values_CV(state, x))
         self.Final_update_button.clicked.connect(lambda state, x=UPDATE_FINAL: self.update_values_CV(state, x))
         self.Time_update_button.clicked.connect(lambda state, x=UPDATE_TIME: self.update_values_CV(state, x))
 
+        self.Initial_update_button.setDisabled(False)
+        self.Final_update_button.setDisabled(False)           
+        self.Scan_update_button.setDisabled(False)            
+        self.Time_update_button.setDisabled(False)
 
-    def update_plot_data(self):
 
-        self.x = self.x[1:]  # Remove the first y element.
-        self.x.append(self.x[-1] + 1)  # Add a new value 1 higher than the last.
+        self.retranslateUi(ClinicianWindow)
+        self.tabWidget.setCurrentIndex(0)
+        QtCore.QMetaObject.connectSlotsByName(ClinicianWindow)
+        ClinicianWindow.setTabOrder(self.Connection_button, self.Connection_label)
+        ClinicianWindow.setTabOrder(self.Connection_label, self.Connection_port_label)
+        ClinicianWindow.setTabOrder(self.Connection_port_label, self.Final_update_button)
+        ClinicianWindow.setTabOrder(self.Final_update_button, self.Clear_CV_button)
+        ClinicianWindow.setTabOrder(self.Clear_CV_button, self.Initial_CV_textEdit)
+        ClinicianWindow.setTabOrder(self.Initial_CV_textEdit, self.Initial_update_button)
+        ClinicianWindow.setTabOrder(self.Initial_update_button, self.Final_CV_textEdit)
+        ClinicianWindow.setTabOrder(self.Final_CV_textEdit, self.tabWidget)
+        ClinicianWindow.setTabOrder(self.tabWidget, self.Scan_CV_textEdit)
+        ClinicianWindow.setTabOrder(self.Scan_CV_textEdit, self.Scan_update_button)
+        ClinicianWindow.setTabOrder(self.Scan_update_button, self.graphWidget_AMP)
+        ClinicianWindow.setTabOrder(self.graphWidget_AMP, self.Start_amp_button)
+        ClinicianWindow.setTabOrder(self.Start_amp_button, self.Draw_CV_button)
 
-        self.y = self.y[1:]  # Remove the first
-        self.y.append( randint(0,100))  # Add a new random value.
+
+
+    def retranslateUi(self, ClinicianWindow):
+        _translate = QtCore.QCoreApplication.translate
+        ClinicianWindow.setWindowTitle(_translate("ClinicianWindow", "MainWindow"))
+        self.Connection_button.setText(_translate("ClinicianWindow", ""))
+        self.Connection_label.setText(_translate("ClinicianWindow", "NOT CONNECTED"))
+        self.Time_CV_label.setText(_translate("ClinicianWindow", "TIME DURATION (sec):"))
+        self.Initial_value_CV_label.setText(_translate("ClinicianWindow", "SET INITIAL VALUE (mV):"))
+        self.Final_value_CV_label.setText(_translate("ClinicianWindow", "SET FINAL VALUE (mV):"))
+        self.Scan_update_button.setText(_translate("ClinicianWindow", "UPDATE"))
+        self.Initial_update_button.setText(_translate("ClinicianWindow", "UPDATE"))
+        self.Scanrate_CV_label.setText(_translate("ClinicianWindow", "SET SCAN RATE (mV/sec):"))
+        self.Final_update_button.setText(_translate("ClinicianWindow", "UPDATE"))
+        self.Time_update_button.setText(_translate("ClinicianWindow", "UPDATE"))
+        self.Draw_CV_button.setText(_translate("ClinicianWindow", "DRAW"))
+        self.Clear_CV_button.setText(_translate("ClinicianWindow", "CLEAR"))
+        self.Ready_CV_label.setText(_translate("ClinicianWindow", "NOT READY"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), _translate("ClinicianWindow", "Cyclic Voltammetry"))
+        self.Start_amp_button.setText(_translate("ClinicianWindow", "START"))
+        self.Stop_amp_button.setText(_translate("ClinicianWindow", "STOP"))
+        self.Fetch_amp_button.setText(_translate("ClinicianWindow", "FETCH FROM MEMORY"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), _translate("ClinicianWindow", "Chronoamperometry"))
+        self.Value_data_label.setText(_translate("ClinicianWindow", "VALUE"))
+        self.Start_data_button.setText(_translate("ClinicianWindow", "START MEASUREMENT"))
+        self.Glucose_data_label.setText(_translate("ClinicianWindow", "GLUCOSE CONCENTRATION (mg/dL)"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("ClinicianWindow", "Data Visualization"))
+        self.connect_to_COM()
+
+
+    def connect_to_COM(self):
+
+        #scan continuously the serial port
+        serial_ports_array = self.serialscan()
+
+        i=0
+
+        for i in range(len(serial_ports_array)):
+            # setup reading worker
+            self.serial_worker = SerialWorker(serial_ports_array[i]) # needs to be re defined
+            # connect worker signals to functions
+            self.serial_worker.signals.status.connect(self.check_serialport_status)
+            self.serial_worker.signals.device_port.connect(self.connected_device)
+            # execute the worker
+            self.threadpool.start(self.serial_worker)
+            i=i+1
+
+
+
+    def update_plot_data(self, potential_CV, current_CV):
+
+
+        self.x.append(potential_CV)  # Add a new value 1 higher than the last.
+
+        self.y.append(current_CV)  # Add a new random value.
 
         self.CV_line.setData(self.x, self.y)  # Update the data.
 
@@ -669,27 +908,24 @@ class Ui_ClinicianWindow(object):
         """!
         @brief Scans all serial ports and create a list.
         """
-        # create the combo box to host port list
-        self.port_text = ""
-        self.Connection_comboBox.currentTextChanged.connect(self.port_changed)
 
-        # acquire list of serial ports and add it to the combo box
+        self.port_text = ""
+
+
+        # acquire list of serial ports 
         serial_ports = [
                 p.name
                 for p in serial.tools.list_ports.comports()
             ]
-        self.Connection_comboBox.addItems(serial_ports)
+
+        return serial_ports
+
 
 
     ##################
     # SERIAL SIGNALS #
     ##################
-    def port_changed(self):
-        """!
-        @brief Update conn_btn label based on selected port.
-        """
-        self.port_text = self.Connection_comboBox.currentText()
-        self.Connection_button.setText("Connect to port {}".format(self.port_text))
+
 
     @pyqtSlot(bool)
     def on_toggle(self, checked):
@@ -697,34 +933,34 @@ class Ui_ClinicianWindow(object):
         @brief Allow connection and disconnection from selected serial port.
         """
         if checked:
+
             
-            self.Initial_update_button.setDisabled(False)
-            self.Final_update_button.setDisabled(False)           
-            self.Scan_update_button.setDisabled(False)            
-            self.Time_update_button.setDisabled(False)
+            self.Initial_update_button.setDisabled(True)
+            self.Final_update_button.setDisabled(True)           
+            self.Scan_update_button.setDisabled(True)            
+            self.Time_update_button.setDisabled(True)
 
-            # setup reading worker
-            self.serial_worker = SerialWorker(self.port_text) # needs to be re defined
-            # connect worker signals to functions
-            self.serial_worker.signals.status.connect(self.check_serialport_status)
-            self.serial_worker.signals.device_port.connect(self.connected_device)
-            # execute the worker
-            self.threadpool.start(self.serial_worker)
-
-            self.CHECK_TOGGLE = bool(False)
-
-        else:
             # kill thread
             self.Connection_label.setStyleSheet("background-color:rgb(255,0,0);")
             self.Connection_label.setText("NOT CONNECTED")
             self.serial_worker.is_killed = True
             self.serial_worker.killed()
-            self.Connection_comboBox.setDisabled(False) # enable the possibility to change port
+            self.Connection_port_label.setDisabled(False) 
             self.Connection_button.setText(
                 "Connect to port {}".format(self.port_text)
             )
-            self.CHECK_TOGGLE = bool(True)
+            self.CHECK_TOGGLE = bool(False)
 
+
+        else:
+            self.Initial_update_button.setDisabled(False)
+            self.Final_update_button.setDisabled(False)           
+            self.Scan_update_button.setDisabled(False)            
+            self.Time_update_button.setDisabled(False)
+
+            self.connect_to_COM()
+
+            self.CHECK_TOGGLE = bool(True)
 
     @pyqtSlot()
     def update_values_CV(self, state, char):
@@ -834,14 +1070,14 @@ class Ui_ClinicianWindow(object):
             self.Connection_button.setChecked(False)
         elif status == 1:
             # enable all the widgets on the interface
-            self.Connection_comboBox.setDisabled(True) # disable the possibility to change COM port when already connected
             self.Connection_button.setText(
                 "Disconnect from port {}".format(port_name)
 
             )
 
             self.Connection_label.setStyleSheet("background-color:rgb(0,255,0);")
-            self.Connection_label.setText("CONNECTED")            
+            self.Connection_label.setText("CONNECTED")    
+
 
     def connected_device(self, port_name):
         """!
@@ -865,13 +1101,38 @@ class Ui_ClinicianWindow(object):
         """!
         @brief Draw the plots.
         """
+        global RECEIVE_CV_DATA
+
         self.serial_worker.send('F')
         time.sleep(0.1)
         self.serial_worker.send('z')
         time.sleep(0.1)
-
-        self.timer.start()     
+ 
         self.CV_line = self.plot(self.graphWidget_CV, self.x, self.y, 'CV','r')
+
+        self.serial_worker.is_killed = True
+        self.serial_worker.killed()
+        time.sleep(1)
+
+        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
+        # connect worker signals to functions
+        self.graph_worker.graph_signals.plot_values.connect(self.update_plot_data)
+ 
+        #self.graph_worker.graph_signals.data_ready_signal.connect(self.update_plot_data)
+
+        # execute the worker
+        self.threadpool.start(self.graph_worker)
+
+        RECEIVE_CV_DATA  = True
+
+
+
+
+
+
+
+
+
 
 
 

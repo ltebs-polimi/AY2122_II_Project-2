@@ -114,6 +114,8 @@ int main(void)
                 sprintf(DataBuffer, "Glucose $$$");
                 UART_PutString(DataBuffer);
                 
+                
+                
                 break;
            
             
@@ -210,6 +212,8 @@ int main(void)
             case START_CYCLIC_VOLTAMMETRY: ;  // 'F' Start a cyclic voltammetry experiment
                 
                 if(CV_ready_Flag==true){
+                    
+                    CyDelay(50);
                 
                     lut_length = user_lookup_table_maker(); //scan rate, start and initial values should be already set
                     

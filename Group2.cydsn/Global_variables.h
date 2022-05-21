@@ -85,12 +85,16 @@ uint16 selected_scan_rate;
 /* Variables for the received commands via UART */
 #define MAX_COMMAND_LENGTH 40
 #define TRANMSIT_BUFFER_SIZE 16
+#define PACKET_DIMENSION 4
+#define TRANSMIT_CV_SIZE 6
 
 uint8_t command[MAX_COMMAND_LENGTH];   
 uint8_t command_lenght;
 char str[64];
 int len;
 char DataBuffer[TRANMSIT_BUFFER_SIZE];
+uint8_t data_packet[PACKET_DIMENSION];
+uint8_t UART_buffer_CV[TRANSMIT_CV_SIZE];
 
 #endif    
 /* [] END OF FILE */
