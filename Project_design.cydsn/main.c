@@ -58,6 +58,8 @@ int main(void)
     glucose_concentration = 100;
     glucose_concentration_old = 0;
     
+    spacer = 'A';
+    
     CyGlobalIntEnable;
         
     I2CMASTER_Start();
@@ -148,7 +150,7 @@ int main(void)
                 if(flag == 0) {
                     flag = 1;
                     save_current_measurement(glucose_concentration);
-                    glucose_concentration_from_memory = get_measurement_from_memory(eeprom_current_address - 7);
+                    glucose_concentration_from_memory = get_measurement_from_memory(eeprom_current_address - 8);
                 }
                 
                 state = IDLE;

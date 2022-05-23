@@ -142,7 +142,13 @@ void save_current_measurement(uint8_t glucose_concentration) {
     }
     CyDelay(50);
     
-    eeprom_current_address += 7;
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 6, spacer); 
+    if(error == ERROR) {
+        UART_1_PutString("\nError in saving spacer in EEPROM memory\r\n");
+    }
+    CyDelay(50);
+    
+    eeprom_current_address += 8;
 }
 
 /*  EEPROM GET MEASUREMENT FROM MEMORY

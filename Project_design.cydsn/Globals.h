@@ -55,6 +55,7 @@
 
 // EEPROM GLOBALS
     uint16_t eeprom_current_address;
+    char spacer;                                    //Spacer code for EEPROM memory
     
 #endif
 
