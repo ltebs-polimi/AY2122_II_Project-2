@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include "stdlib.h"
 // local files
-#include "Calibration.h"
 #include "DVDAC.h"
 #include "Global_variables.h"
 #include "Helper_functions.h"
@@ -69,11 +68,9 @@ int main(void)
     isr_adcAmp_StartEx(adcAmpInterrupt);
     isr_adcAmp_Disable();
     
-    //TIA calibration --> potrebbe essere skippata settando direttamente un valore 
-    //TIA_resistor_value_index = 0;
-    //calibrate_TIA(TIA_resistor_value_index);  // manca gestione della scelta della resistenza da usare per calibrare
+    TIA_SetResFB(TIA_RES_FEEDBACK_20K); //A 20KOhm feedback resistor is chosen for the TIA
     
-    
+        
     //Start the watchdog timer --> SERVE DAVVERO??
     CyWdtStart(CYWDT_1024_TICKS, CYWDT_LPMODE_NOCHANGE); // it enables the watchdog timer (period between 2 and 3 secs)
     
@@ -113,9 +110,7 @@ int main(void)
                 
                 sprintf(DataBuffer, "Glucose $$$");
                 UART_PutString(DataBuffer);
-                
-                
-                
+
                 break;
            
             
@@ -213,7 +208,7 @@ int main(void)
                 
                 if(CV_ready_Flag==true){
                     
-                    CyDelay(50);
+                    CyDelay(1000);
                 
                     lut_length = user_lookup_table_maker(); //scan rate, start and initial values should be already set
                     

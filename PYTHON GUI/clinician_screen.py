@@ -40,6 +40,7 @@ from random import randint
 
 # Globals
 CONN_STATUS = False
+GRAPH_STATUS = False
 UPDATE_SCAN_FLAG=False 
 UPDATE_TIME_FLAG=False 
 RECEIVE_CV_DATA= False
@@ -55,12 +56,8 @@ UPDATE_TIME= "E"
 
 
 port_name_global = 0 
-current_CV = int(0)
+current_CV = float(0.0)
 potential_CV = int(0)
-current_CV_H = int(0)
-current_CV_L = int(0)
-potential_CV_H= int(0)
-potential_CV_L= int(0)
 stringa_prova=''
 
 
@@ -212,9 +209,7 @@ class UpdateGraphSignals(QObject):
             int --> x value
             int --> y value
     """
-    plot_values = pyqtSignal(int, int)
-    data_ready_signal = pyqtSignal(object)
-
+    plot_values = pyqtSignal(int, float)
 
 
 
@@ -230,6 +225,9 @@ class UpdateGraphWorker(QRunnable):
         """!
         @brief Init worker.
         """
+        global GRAPH_STATUS
+        self.is_killed = False
+
         super().__init__()
 
         self.port_graph = serial.Serial()
@@ -238,6 +236,8 @@ class UpdateGraphWorker(QRunnable):
 
         self.port_graph = serial.Serial(port=self.port_graph_name, baudrate=self.baudrate_graph,
                                 write_timeout=0, timeout=2)  
+        
+        GRAPH_STATUS=True
 
 
         logging.info("in update graph worker init")
@@ -260,6 +260,7 @@ class UpdateGraphWorker(QRunnable):
         global final_value
         global READ_PACKET_DATA
 
+
      
         
         if RECEIVE_CV_DATA:
@@ -277,26 +278,18 @@ class UpdateGraphWorker(QRunnable):
         """
         global FINISHED_CV_GRAPH
         global RECEIVE_CV_DATA
-        global current_CV_H
-        global current_CV_L
         global PACKET_ARRIVED 
         global READ_PACKET_DATA
         global potential_CV
         global LIMIT_REACHED
         global initial_value
         global final_value
-        global potential_CV_H
-        global potential_CV_L
         global current_CV
         global stringa_prova
-        stringa_current_H=''
-        stringa_current_L=''
-        stringa_potential_H=''
-        stringa_potential_L=''
+        stringa_current=''
+        stringa_potential=''
         A_index=0
         b_index=0
-        c_index=0
-        d_index=0
         z_index=0
 
         PACKET_ARRIVED=False
@@ -310,8 +303,7 @@ class UpdateGraphWorker(QRunnable):
                 PACKET_ARRIVED=True
 
             if PACKET_ARRIVED == True and stringa_prova[0] == 'A' and stringa_prova[len(stringa_prova)-1] == 'z':
-                logging.info("packet_arrived")
-                logging.info(len(stringa_prova))               
+                logging.info("packet_arrived")              
                 for i in range(len(stringa_prova)):
                     if(stringa_prova[i])=='A':
                         A_index=i
@@ -319,39 +311,21 @@ class UpdateGraphWorker(QRunnable):
                     if(stringa_prova[i])=='b':
                         b_index=i
 
-                    if(stringa_prova[i])=='c':
-                        c_index=i
-
-                    if(stringa_prova[i])=='d':
-                        d_index=i
-
                     if(stringa_prova[i])=='z':
                         z_index=i
 
 
-                logging.info(A_index)
-                logging.info(b_index)
-                logging.info(c_index)
-                logging.info(d_index)
-                logging.info(z_index)
+                stringa_current = stringa_prova[A_index+1:b_index]
+                stringa_potential= stringa_prova[b_index+1:z_index]
 
-                stringa_current_H = stringa_prova[A_index+1:b_index]
-                stringa_current_L= stringa_prova[b_index+1:c_index]
-                stringa_potential_H= stringa_prova[c_index+1:d_index]
-                stringa_potential_L= stringa_prova[d_index+1:z_index]
-
-                logging.info(stringa_current_H)
-                logging.info(stringa_current_L)
-                logging.info(stringa_potential_H)
-                logging.info(stringa_potential_L)
             
                 PACKET_ARRIVED = False
                 READ_PACKET_DATA = True
 
 
             if(READ_PACKET_DATA == True):
-                current_CV = (int(stringa_current_H) << 8) | (int(stringa_current_L))
-                potential_CV = (int(stringa_potential_H) << 8) | (int(stringa_potential_L))
+                current_CV = float(stringa_current)
+                potential_CV = int(stringa_potential)
 
                 logging.info(current_CV)
                 logging.info(potential_CV)
@@ -361,14 +335,10 @@ class UpdateGraphWorker(QRunnable):
                 self.graph_signals.plot_values.emit(potential_CV, current_CV) 
 
                 stringa_prova=''
-                stringa_current_H=''
-                stringa_current_L=''
-                stringa_potential_H=''
-                stringa_potential_L=''
+                stringa_current=''
+                stringa_potential=''
                 A_index=0
                 b_index=0
-                c_index=0
-                d_index=0
                 z_index=0
 
                 self.port_graph.reset_input_buffer()
@@ -392,6 +362,19 @@ class UpdateGraphWorker(QRunnable):
         except:
             logging.info("Could not write {} on port {}.".format(char, port_name_global))
 
+
+    @pyqtSlot()
+    def killed_graph(self):
+        """!
+        @brief Close the serial port before closing the app.
+        """
+        global GRAPH_STATUS
+        if self.is_killed:
+            self.port_graph.close()
+            time.sleep(0.01)
+            GRAPH_STATUS = False
+
+        logging.info("Killing the process")
 
 
 class Ui_ClinicianWindow(object):
@@ -887,7 +870,7 @@ class Ui_ClinicianWindow(object):
             self.serial_worker.signals.device_port.connect(self.connected_device)
             # execute the worker
             self.threadpool.start(self.serial_worker)
-            i=i+1
+            
 
 
 
@@ -934,22 +917,34 @@ class Ui_ClinicianWindow(object):
         """
         if checked:
 
-            
             self.Initial_update_button.setDisabled(True)
             self.Final_update_button.setDisabled(True)           
             self.Scan_update_button.setDisabled(True)            
             self.Time_update_button.setDisabled(True)
 
-            # kill thread
-            self.Connection_label.setStyleSheet("background-color:rgb(255,0,0);")
-            self.Connection_label.setText("NOT CONNECTED")
-            self.serial_worker.is_killed = True
-            self.serial_worker.killed()
-            self.Connection_port_label.setDisabled(False) 
-            self.Connection_button.setText(
-                "Connect to port {}".format(self.port_text)
-            )
-            self.CHECK_TOGGLE = bool(False)
+            if CONN_STATUS:
+                # kill serial thread
+                self.Connection_label.setStyleSheet("background-color:rgb(255,0,0);")
+                self.Connection_label.setText("NOT CONNECTED")
+                self.serial_worker.is_killed = True
+                self.serial_worker.killed()
+                self.Connection_port_label.setDisabled(False) 
+                self.Connection_button.setText(
+                    "Connect to port {}".format(self.port_text)
+                )
+                self.CHECK_TOGGLE = bool(False)
+
+            if GRAPH_STATUS:
+                # kill graph thread
+                self.Connection_label.setStyleSheet("background-color:rgb(255,0,0);")
+                self.Connection_label.setText("NOT CONNECTED")
+                self.graph_worker.is_killed = True
+                self.graph_worker.killed_graph()
+                self.Connection_port_label.setDisabled(False) 
+                self.Connection_button.setText(
+                    "Connect to port {}".format(self.port_text)
+                )
+                self.CHECK_TOGGLE = bool(False)
 
 
         else:
@@ -1092,6 +1087,8 @@ class Ui_ClinicianWindow(object):
         """
         self.serial_worker.is_killed = True
         self.serial_worker.killed()
+        self.graph_worker.is_killed = True
+        self.graph_worker.killed_graph()       
 
     ##################
     # GRAPH METHODS #
@@ -1103,6 +1100,7 @@ class Ui_ClinicianWindow(object):
         """
         global RECEIVE_CV_DATA
 
+
         self.serial_worker.send('F')
         time.sleep(0.1)
         self.serial_worker.send('z')
@@ -1112,27 +1110,17 @@ class Ui_ClinicianWindow(object):
 
         self.serial_worker.is_killed = True
         self.serial_worker.killed()
-        time.sleep(1)
+        time.sleep(0.5)
 
         self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
         # connect worker signals to functions
         self.graph_worker.graph_signals.plot_values.connect(self.update_plot_data)
- 
-        #self.graph_worker.graph_signals.data_ready_signal.connect(self.update_plot_data)
+
 
         # execute the worker
         self.threadpool.start(self.graph_worker)
 
         RECEIVE_CV_DATA  = True
-
-
-
-
-
-
-
-
-
 
 
 

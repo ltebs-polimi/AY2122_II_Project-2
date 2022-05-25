@@ -11,19 +11,10 @@
 #include "stdio.h"
 #include "stdlib.h"
 // local files
-#include "Calibration.h"
 #include "DVDAC.h"
 #include "Global_variables.h"
 #include "Helper_functions.h"
 
-
-uint8 AMux_channel_select = 0;  // Let the user choose to use the two electrode configuration (set to 0) or a three
-// electrode configuration (set to 1) by choosing the correct AMux channel
-
-uint8 adc_recording_channel = 0;  //  A COSA SERVE???
-
-
-uint8 adc_hold;  // value to hold what adc buffer was just filled  --> SERVE ???
 
 
 float uA_CV_scan[MAX_CV_LUT_SIZE];
@@ -56,8 +47,8 @@ CY_ISR(dacInterrupt)
     
     lut_value = waveform_CV_lut[lut_index]; // take value from the CV look up table 
     
-    //len= snprintf(str, sizeof(str), "applied potential: %d\r\n", lut_value);
-    //UART_Debug_PutString(str);
+    len= snprintf(str, sizeof(str), "applied potential: %d\r\n", lut_value);
+    UART_Debug_PutString(str);
         
     
 }
@@ -69,14 +60,7 @@ CY_ISR(adcInterrupt){
     
     int16 valore_adc_mv_CV= ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
     float current_CV= (float)(-1)*(valore_adc_mv_CV)/20.0;
-   
-    uint16_t current_int_CV = current_CV;
-    uint8_t current_int_CV_H = current_int_CV >>8 ;
-    uint8_t current_int_CV_L = current_int_CV &(0xFF);
-    
-    uint8_t potential_CV_H = lut_value >> 8 ;
-    uint8_t potential_CV_L = lut_value & (0xFF);
-    
+       
     
     len= snprintf(str, sizeof(str), "uA ADC read: %.8f\r\n", current_CV);
     UART_Debug_PutString(str);
@@ -85,20 +69,11 @@ CY_ISR(adcInterrupt){
     UART_Debug_PutString(str);
 
     
-    //send out values with the UART for the CV graph --> TO BE ADDED
- 
-//    UART_buffer_CV[0]= 'A';
-//    UART_buffer_CV[1]= current_int_CV_H;
-//    UART_buffer_CV[2]= current_int_CV_L;
-//    UART_buffer_CV[3]= potential_CV_H;
-//    UART_buffer_CV[4]= potential_CV_L;
-//    UART_buffer_CV[5]= 'z';
-//
-//    UART_Debug_PutArray(UART_buffer_CV, TRANSMIT_CV_SIZE);
-
-    len= snprintf(str, sizeof(str), "A%ub%uc%ud%uz", current_int_CV_H, current_int_CV_L, potential_CV_H, potential_CV_L);
+    //send out values with the UART for the CV graph --> int values
+    len= snprintf(str, sizeof(str), "A%.2fb%uz", current_CV, lut_value);
     UART_PutString(str);
     UART_Debug_PutString(str);
+
     
     
 }

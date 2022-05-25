@@ -26,12 +26,10 @@ void helper_HardwareSetup(void) {
     helper_HardwareStart();
     helper_HardwareSleep();
 
-    AMux_TIA_input_Init();
     AMux_TIA_resistor_bypass_Init();
     DVDAC_Start(); 
     
     // iniatalize the analog muxes connections 
-    AMux_TIA_input_Select(AMux_TIA_working_electrode_ch);  // Connect the working electrode
     AMux_TIA_resistor_bypass_Select(0);  // Start with no extra TIA resistor
 
 }
