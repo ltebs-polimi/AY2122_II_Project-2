@@ -21,8 +21,16 @@ float uA_CV_scan[MAX_CV_LUT_SIZE];
 float uA_amp;
 float32 R_analog_route = 0;
 
+float uA_CV_scan[MAX_CV_LUT_SIZE];
+float uA_amp = 0.0;
+float current_CV = 0.0;
+float array_current_CV[10];
+float average_MA=0.0;
+float average_MA_first=0.0;
 int16 potential_max_current=0;
-
+int counter_amperometry = 0;
+int first_time=1;
+int16 valore_adc_mv_CV=0;
 
 // ISR used to run a CV scan 
 CY_ISR(dacInterrupt)
@@ -53,30 +61,59 @@ CY_ISR(dacInterrupt)
     
 }
 
-
 // ISR used to verify the error between the potential of the working electrode and the VIRTUAL GROUND at 2.048 V
 CY_ISR(adcInterrupt){
+   
+    if(lut_index<=9){
+        
+        valore_adc_mv_CV = ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
+        current_CV = (float)(-1)*(valore_adc_mv_CV)/20.0;
+        array_current_CV[lut_index]=current_CV;
+        average_MA_first += current_CV;
     
+    }else{
     
-    int16 valore_adc_mv_CV= ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
-    float current_CV= (float)(-1)*(valore_adc_mv_CV)/20.0;
-       
-    
-    len= snprintf(str, sizeof(str), "uA ADC read: %.8f\r\n", current_CV);
-    UART_Debug_PutString(str);
-    
-    len= snprintf(str, sizeof(str), "lut_value: %d\r\n", lut_value);
-    UART_Debug_PutString(str);
+        if(first_time){
+            
+            average_MA_first/=10.0; 
+            
+            first_time=0;
+        
+        }else{
+        
+            valore_adc_mv_CV= ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
+            current_CV= (float)(-1)*(valore_adc_mv_CV)/20.0;
+        
+            for(int k=0; k<9; k++){
+                array_current_CV[k]=array_current_CV[k+1];
+                average_MA += array_current_CV[k+1];
+            }
+            array_current_CV[9]=current_CV;
+            average_MA+=current_CV;
+            average_MA/=10.0;
+            
+            
+            len= snprintf(str, sizeof(str), "uA ADC read: %.8f\r\n", average_MA);
+            UART_Debug_PutString(str);
+            
+            len= snprintf(str, sizeof(str), "lut_value: %d\r\n", lut_value);
+            UART_Debug_PutString(str);
 
+            
+            //send out values with the UART for the CV graph --> int values
+            len= snprintf(str, sizeof(str), "A%.2fb%uz", average_MA, lut_value);
+            UART_PutString(str);
+            UART_Debug_PutString(str);
+            
+            
+        }
+        
     
-    //send out values with the UART for the CV graph --> int values
-    len= snprintf(str, sizeof(str), "A%.2fb%uz", current_CV, lut_value);
-    UART_PutString(str);
-    UART_Debug_PutString(str);
+    }
 
-    
     
 }
+
 
 
 // ISR used to get the data from the ADC in case of amperometry measurement
