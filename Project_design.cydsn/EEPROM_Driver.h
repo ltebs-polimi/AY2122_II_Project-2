@@ -35,6 +35,8 @@
     ErrorCode EEPROM_WriteRegister(uint8_t device_address, uint16_t register_address, uint8_t data);
     ErrorCode EEPROM_ReadRegister(uint8_t device_address, uint16_t register_address, uint8_t* data);
     void save_current_measurement(uint8_t glucose_concentration);
+    void save_CV_result(void);
+    int16 get_CV_result(void);
     uint8_t get_measurement_from_memory(uint16_t eeprom_address);
     
 #endif

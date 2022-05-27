@@ -974,15 +974,15 @@ void OLED_loading(){
     rtx_println(glucose_content);
     display_update();
     
-    if(chronoAmp_progress != chronoAmp_progress_old)
+    if(lut_index%100 == 0)
     {
-        chronoAmp_progress_old = chronoAmp_progress;
+        chronoAmp_progress += 5;
         rtx_fillRect(START_LOADING_BAR + chronoAmp_progress, 40, 4, 10, WHITE);
         display_update();
-        chronoAmp_progress += 1;
         if(chronoAmp_progress == 100)
         {
             finished_chronoAmp = 1;
+            chronoAmp_progress = 0;
         }
     }    
 }

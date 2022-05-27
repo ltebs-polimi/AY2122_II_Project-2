@@ -24,8 +24,10 @@
     #define SET_CV_START_VALUE              'C'
     #define SET_CV_END_VALUE                'D' 
     #define SET_CV_TIME                     'E' 
-    #define START_CYCLIC_VOLTAMMETRY        'F'
-    #define RUN_AMPEROMETRY                 'G'
+    #define CLINICIAN_FETCH                 'F'
+    #define START_CYCLIC_VOLTAMMETRY        'G'
+    #define RUN_AMPEROMETRY                 'H'
+    #define USER_START                      'I'
     
 // API CONSTANTS
     #define true                             1
@@ -57,6 +59,7 @@
     uint8_t Update_startvalue_Flag;
     uint8_t Update_endvalue_Flag;
     uint8_t Update_timevalue_Flag;
+    uint8_t Button_Flag;
     
 // MAIN GLOBALS
     char state;

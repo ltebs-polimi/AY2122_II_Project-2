@@ -100,55 +100,137 @@ void save_current_measurement(uint8_t glucose_concentration) {
     
     ErrorCode error;
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address, current_seconds);
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address, current_minutes);
     if(error == ERROR) {
-        UART_1_PutString("\nError in saving seconds in EEPROM memory\r\n");
+        UART_DEBUG_PutString("\nError in saving minutes in EEPROM memory\r\n");
     }
     CyDelay(50);
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 1, current_minutes);
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 1, current_hours);
     if(error == ERROR) {
-        UART_1_PutString("\nError in saving minutes in EEPROM memory\r\n");
+        UART_DEBUG_PutString("\nError in saving hours in EEPROM memory\r\n");
     }
     CyDelay(50);
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 2, current_hours);
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 2, current_date);
     if(error == ERROR) {
-        UART_1_PutString("\nError in saving hours in EEPROM memory\r\n");
+        UART_DEBUG_PutString("\nError in saving date in EEPROM memory\r\n");
     }
     CyDelay(50);
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 3, current_date);
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 3, current_month);
     if(error == ERROR) {
-        UART_1_PutString("\nError in saving date in EEPROM memory\r\n");
+        UART_DEBUG_PutString("\nError in saving month in EEPROM memory\r\n");
     }
     CyDelay(50);
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 4, current_month);
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 4, current_year);
     if(error == ERROR) {
-        UART_1_PutString("\nError in saving month in EEPROM memory\r\n");
+        UART_DEBUG_PutString("\nError in saving year in EEPROM memory\r\n");
     }
     CyDelay(50);
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 5, current_year);
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 5, glucose_concentration); 
     if(error == ERROR) {
-        UART_1_PutString("\nError in saving year in EEPROM memory\r\n");
-    }
-    CyDelay(50);
-    
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 6, glucose_concentration); 
-    if(error == ERROR) {
-        UART_1_PutString("\nError in saving glucose data in EEPROM memory\r\n");
+        UART_DEBUG_PutString("\nError in saving glucose data in EEPROM memory\r\n");
     }
     CyDelay(50);
     
     error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 6, spacer); 
     if(error == ERROR) {
-        UART_1_PutString("\nError in saving spacer in EEPROM memory\r\n");
+        UART_DEBUG_PutString("\nError in saving spacer in EEPROM memory\r\n");
     }
     CyDelay(50);
     
-    eeprom_current_address += 8;
+    eeprom_current_address += 7;
+    
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x00, eeprom_current_address >> 8); 
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in saving EEPROM_H address in EEPROM memory\r\n");
+    }
+    CyDelay(50);
+    
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x01, eeprom_current_address & 0xFF); 
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in saving EEPROM_L address in EEPROM memory\r\n");
+    }
+    CyDelay(50);
+}
+
+/*  EEPROM SAVE CV RESULT
+*   \brief: Function that saves in the first positions of the EEPROM the CV result.
+*   \Parameters: NONE
+*   \Return: NONE
+*/
+void save_CV_result(){
+    ErrorCode error;
+    
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x02, (potential_max_current >> 8));
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in saving CV_H result in EEPROM memory\r\n");
+    }
+    CyDelay(50);
+    
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x03, (potential_max_current & 0xFF));
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in saving CV_L result in EEPROM memory\r\n");
+    }
+    CyDelay(50);
+}
+
+/*  EEPROM SAVE CV RESULT
+*   \brief: Function that fetches in the first positions of the EEPROM the CV result.
+*   \Parameters: NONE
+*   \Return:  
+*       @data: signed CV value fetched from memory
+*/
+int16 get_CV_result() {
+    ErrorCode error;
+    uint8 data_H;
+    uint8 data_L;
+    int16 data = 0;
+    
+    error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x02, &data_H);
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in reading CV_H result from EEPROM memory\r\n");
+    }
+    
+    error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x03, &data_L);
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in reading CV_L result from EEPROM memory\r\n");
+    }
+    
+    data = data_L;
+    data |= data_H << 8;
+    return data;    
+}
+
+/*  EEPROM GET CURRENT ADDRESS FROM MEMORY
+*   \brief: Function that recovers last used address from
+*           EEPROM memory
+*   \Parameters: NONE
+*   \Return: 
+*       @data: register address stored in memory
+*/
+uint16_t get_eeprom_current_address(){
+    ErrorCode error;
+    uint8 data_H;
+    uint8 data_L;
+    uint16 data = 0;
+    
+    error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x00, &data_H);
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in reading EEPROM_H address from EEPROM memory\r\n");
+    }
+    
+    error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x01, &data_L);
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in reading EEPROM_L address from EEPROM memory\r\n");
+    }
+    
+    data = data_L;
+    data |= data_H << 8;
+    return data; 
 }
 
 /*  EEPROM GET MEASUREMENT FROM MEMORY
@@ -168,11 +250,11 @@ uint8_t get_measurement_from_memory(uint16_t eeprom_address) {
     error = EEPROM_ReadRegister(EEPROM_ADDRESS, eeprom_address, &data);
     
     if(error == ERROR) {
-        UART_1_PutString("\nError in reading data from EEPROM memory\r\n");
+        UART_DEBUG_PutString("\nError in reading data from EEPROM memory\r\n");
     }
     
     len = snprintf(str, sizeof(str), "\nFrom memory: %d\r\n\n", data);
-    UART_1_PutString(str);
+    UART_DEBUG_PutString(str);
     
     return data;
 }

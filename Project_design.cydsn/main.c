@@ -15,12 +15,18 @@
 #include <project.h>
 #include <string.h>
 #include <stdio.h>
+#include "stdlib.h"
 
 #include "OLED_Driver.h"
 #include "RTC_Driver.h"
 #include "EEPROM_Driver.h"
 #include "ErrorCodes.h"
 #include "time.h"
+#include "DVDAC.h"
+#include "Globals.h"
+#include "Helper_functions.h"
+#include "InterruptRoutines.h"
+#include "user_selections.h"
 
 #define INITIALIZATION 0
 #define IDLE 1
@@ -29,12 +35,11 @@
 
 
 uint8_t seconds = 0;
-
-
 uint8_t rtc_data_register;
 
 int main(void)
 {
+    
     CyDelay(1000);
     
     //Global variables initialization
@@ -60,10 +65,26 @@ int main(void)
     
     spacer = 'A';
     
+
+    
     CyGlobalIntEnable;
+    
+    
+    //Initialize flags values
+    Input_Flag=false;
+    Command_ready_Flag=false;
+    TIA_Calibration_ended_Flag=false;
+    CV_ready_Flag=false;
+    AMP_ready_Flag=false;
+    Load_EEPROM_Flag=false;
+    Update_scanrate_Flag=false;
+    Update_startvalue_Flag=false;
+    Update_endvalue_Flag=false;
+    Update_timevalue_Flag=false;
+    Button_Flag=true;
         
     I2CMASTER_Start();
-    UART_1_Start();
+    UART_DEBUG_Start();
     
     CyDelay(5);
 
@@ -75,7 +96,7 @@ int main(void)
       Seconds, Minutes, Hours, Date, Month, Year
       Then run the program, re-comment the line and re-run the program
     */
-    //set_RTC(0x30,0x37,0x09,0x25,MAY,Y_2022);
+    //set_RTC(0x00,0x07,0x13,0x25,MAY,Y_2022);
     
     uint8_t glucose_concentration_from_memory = 0;
     char flag = 0;
@@ -86,17 +107,17 @@ int main(void)
     char message[100] = {'\0'};
     
     //display_clear();
-    UART_1_PutString("\r\n**************\r\n");
-    UART_1_PutString("** I2C Scan **\r\n");
-    UART_1_PutString("**************\r\n");
+    UART_DEBUG_PutString("\r\n**************\r\n");
+    UART_DEBUG_PutString("** I2C Scan **\r\n");
+    UART_DEBUG_PutString("**************\r\n");
     
     CyDelay(10);
     
-    UART_1_PutString("\n\n   ");
+    UART_DEBUG_PutString("\n\n   ");
 	for(uint8_t i = 0; i<0x10; i++)
 	{
         sprintf(message, "%02X ", i);
-		UART_1_PutString(message);
+		UART_DEBUG_PutString(message);
 	}
  
     
@@ -105,7 +126,7 @@ int main(void)
         
 		if(i2caddress % 0x10 == 0 ) {
             sprintf(message, "\n%02X ", i2caddress);
-		    UART_1_PutString(message);
+		    UART_DEBUG_PutString(message);
         }
  
 		rval = I2CMASTER_MasterSendStart(i2caddress, I2CMASTER_WRITE_XFER_MODE);
@@ -113,39 +134,80 @@ int main(void)
         if( rval == I2CMASTER_MSTR_NO_ERROR ) // If you get ACK then print the address
 		{
             sprintf(message, "%02X ", i2caddress);
-		    UART_1_PutString(message);
+		    UART_DEBUG_PutString(message);
 		}
 		else //  Otherwise print a --
 		{
-		    UART_1_PutString("-- ");
+		    UART_DEBUG_PutString("-- ");
 		}
         I2CMASTER_MasterSendStop();
 	}
-	UART_1_PutString("\n\n");
+	UART_DEBUG_PutString("\n\n");
+    
+    
+    
+    
+    
+    // PSOC Variables initialization
+    lut_length=5000; // how long the look up table is,initialize large so when starting isr the ending doesn't get triggered
+    command_lenght = 0;
+    
+    /* Place your initialization/startup code here (e.g. MyInst_Start()) */
+    helper_HardwareSetup();  //user-defined function to initialize the HW 
+    
+    ADC_SigDel_SelectConfiguration(1, DO_NOT_RESTART_ADC); // select the configuration to be used for the ADC (2 possible configurations --> SERVONO ???)
+    
+    
+    //LOAD VALUES FROM THE EEPROM --> TO BE ADDED (set the Load_EEPROM_Flag=true when ended)
+    
+    
+    //Start the UART (used by the BT) and the corresponding isr
+    UART_BLT_Start();
+    UART_DEBUG_Start();
+
+    
+    //Initialize all interrupts
+    isr_dac_StartEx(dacInterrupt);
+    isr_dac_Disable();  
+    
+    isr_adc_StartEx(adcInterrupt);
+    isr_adc_Disable();
+    
+    isr_adcAmp_StartEx(adcAmpInterrupt);
+    isr_adcAmp_Disable();
+    
+    TIA_SetResFB(TIA_RES_FEEDBACK_20K); //A 20KOhm feedback resistor is chosen for the TIA
+    
+        
+    //Start the watchdog timer --> SERVE DAVVERO??
+    //CyWdtStart(CYWDT_1024_TICKS, CYWDT_LPMODE_NOCHANGE); // it enables the watchdog timer (period between 2 and 3 secs)    
+    
 
     for(;;)
     {
+        //CyWdtClear(); //The watchdog must be cleared using the CyWdtClear() function before three ticks of the watchdog timer occur
+        
         switch(state) {
             case INITIALIZATION:
                 OLED_welcome_screen();
                 
                 rtc_read_time(RTC_ADDRESS);
                 len = snprintf(rtc_content, sizeof(rtc_content), "Secondi: %d\r\n", current_seconds);
-                UART_1_PutString(rtc_content);
+                UART_DEBUG_PutString(rtc_content);
                 len = snprintf(rtc_content, sizeof(rtc_content), "Minuti: %d\r\n", current_minutes);
-                UART_1_PutString(rtc_content);
+                UART_DEBUG_PutString(rtc_content);
                 len = snprintf(rtc_content, sizeof(rtc_content), "Ore: %d\r\n", current_hours);
-                UART_1_PutString(rtc_content);
+                UART_DEBUG_PutString(rtc_content);
                 len = snprintf(rtc_content, sizeof(rtc_content), "Giorno: %d\r\n", current_date);
-                UART_1_PutString(rtc_content);
+                UART_DEBUG_PutString(rtc_content);
                 len = snprintf(rtc_content, sizeof(rtc_content), "Mese: %d\r\n", current_month);
-                UART_1_PutString(rtc_content);
+                UART_DEBUG_PutString(rtc_content);
                 len = snprintf(rtc_content, sizeof(rtc_content), "Anno: %d\r\n\n", current_year);
-                UART_1_PutString(rtc_content);
+                UART_DEBUG_PutString(rtc_content);
                 
                 len = snprintf(rtc_content, sizeof(rtc_content), "%d-%d-%d %02d:%02d:%02d\n", current_date, 
                                current_month, current_year, current_hours, current_minutes, current_seconds);
-                UART_1_PutString(rtc_content);
+                UART_DEBUG_PutString(rtc_content);
                 
                 if(flag == 0) {
                     flag = 1;
@@ -160,10 +222,11 @@ int main(void)
             case IDLE:
                 button_state = Pin_Button_Read();
                 //len = snprintf(message, sizeof(message), "%d\n", button_state);
-                //UART_1_PutString(message);
+                //UART_DEBUG_PutString(message);
                 if(!button_state) {
                     state = LOADING;
-                    display_clear();
+                    Button_Flag = false;
+                    display_clear();                    
                 }   
             
             break;
@@ -180,7 +243,6 @@ int main(void)
             
             case MEASUREMENT:
                 finished_chronoAmp = 0;
-                chronoAmp_progress = 0;
                 if(power_on){
                     power_on = 0;
                     display_battery_level(battery_level);
@@ -198,12 +260,204 @@ int main(void)
                 
                 button_state = Pin_Button_Read();
                 len = snprintf(message, sizeof(message), "%d\n", button_state);
-                UART_1_PutString(message);
+                UART_DEBUG_PutString(message);
             
             break;
                 
+        } // end of LED switch case
+
+
+        
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////        
+        
+        
+        if (UART_BLT_GetRxBufferSize() > 0 && Command_ready_Flag==false) // Continuously check if something is received via UART
+        {
+            Input_Flag=true;
+            uint8_t received_char = UART_BLT_GetChar();
+            command[command_lenght] = received_char;
+            command_lenght += 1;
+            
         }
-    }
-}
+        
+        if(Input_Flag==true && UART_BLT_GetRxBufferSize()==0){
+
+            if (command[command_lenght-1]=='z') //This is necessary in order to understand if the message has ended (or use a tail as an alternative)
+            {   
+
+                Input_Flag=false;
+                Command_ready_Flag=true;
+                
+            }
+        }
+        
+        
+        
+        //Check if something has been received by the UART 
+        if (Command_ready_Flag == true && Button_Flag==true) {  
+            
+            //Switch case based on the first character that is received
+            switch (command[0]) { 
+            
+            case CONNECT_TO_COM_PORT: // 'A' Connect to the BT COM port
+                
+                sprintf(DataBuffer, "Glucose $$$");
+                UART_BLT_PutString(DataBuffer);
+
+                break;
+           
+            
+                
+            case SET_SCAN_RATE:  // 'B' Set the scan rate (in mV per second) by properly setting the PWM period 
+                
+                selected_scan_rate = (command[1]<<8) | (command[2]&(0xFF));
+                user_set_isr_timer(selected_scan_rate);
+                Update_scanrate_Flag=true;
+                
+                UART_DEBUG_PutString("SET SCAN RATE\r\n");
+                
+                len= snprintf(str, sizeof(str), "scan rate: %d\r\n", selected_scan_rate);
+                UART_DEBUG_PutString(str);
+                
+                if(Update_scanrate_Flag && Update_startvalue_Flag && Update_endvalue_Flag){
+                    
+                    
+                    CV_ready_Flag = true;
+                    
+                    // Send a UART message so that the red "NOT READY LABEL", turns into a green "READY" label
+                    sprintf(DataBuffer, "CV ready");
+                    UART_BLT_PutString(DataBuffer);
+                    
+                }
+                
+                break;
+            
+
+            case SET_CV_START_VALUE: // 'C' Set the initial value for the CV scan (in mV)
+                
+                start_dac_value = (command[1]<<8) | (command[2]&(0xFF));
+                Update_startvalue_Flag=true;
+                
+                UART_DEBUG_PutString("SET INITIAL CV VALUE\r\n");
+                
+                len= snprintf(str, sizeof(str), "Initial CV value: %d\r\n", start_dac_value);
+                UART_DEBUG_PutString(str);
+                
+                if((Update_scanrate_Flag||Update_timevalue_Flag) && Update_startvalue_Flag && Update_endvalue_Flag){
+                    
+                    CV_ready_Flag = true;
+                    
+                    // Send a UART message so that the red "NOT READY LABEL", turns into a green "READY" label                      
+                    sprintf(DataBuffer, "CV ready");
+                    UART_BLT_PutString(DataBuffer);
+                }
+                
+    
+                break;
+                
+            case SET_CV_END_VALUE: // 'D' Set the initial value for the CV scan (in mV)
+                
+                end_dac_value = (command[1]<<8) | (command[2]&(0xFF));
+                
+                Update_endvalue_Flag=true;    
+                
+                
+                UART_DEBUG_PutString("SET FINAL CV VALUE\r\n");
+                
+                len= snprintf(str, sizeof(str), "Final CV value: %d\r\n", end_dac_value);
+                UART_DEBUG_PutString(str);
+
+                if((Update_scanrate_Flag||Update_timevalue_Flag) && Update_startvalue_Flag && Update_endvalue_Flag){
+                    
+                    CV_ready_Flag = true;
+                    // Send a UART message so that the red "NOT READY LABEL", turns into a green "READY" label
+                    sprintf(DataBuffer, "CV ready");
+                    UART_BLT_PutString(DataBuffer);
+                
+                }
+                
+                break;             
+
+            case SET_CV_TIME: // 'E' Set the time duration for the CV scan (in seconds)
+                
+                Update_timevalue_Flag=true;
+                uint8 selected_time = command[1];
+                
+                if(Update_startvalue_Flag && Update_endvalue_Flag && Update_timevalue_Flag){
+                    
+                    selected_scan_rate = ((end_dac_value - start_dac_value)/selected_time)*2;
+                    
+                    CV_ready_Flag = true;
+                    // Send a UART message so that the red "NOT READY LABEL", turns into a green "READY" label
+                    sprintf(DataBuffer, "CV ready");
+                    UART_BLT_PutString(DataBuffer);
+                
+                }
+                
+                break;    
+                
+
+            case CLINICIAN_FETCH: // 'F' Set the time duration for the CV scan (in seconds)
+                
+                //fetch potential value from EEPROM (save it in the correct global variable) --> TO BE ADDED
+                
+                break;    
+                
+                
+            case START_CYCLIC_VOLTAMMETRY:   // 'G' Start a cyclic voltammetry experiment
+                
+                if(CV_ready_Flag==true){
+                    
+                    CyDelay(1000);
+                
+                    lut_length = user_lookup_table_maker(); //scan rate, start and initial values should be already set
+                    
+                    // Send a UART message so that the red "NOT READY LABEL", turns into a green "READY" label
+                    
+                    user_start_cv_run();
+                    
+                }
+                
+                break;
+            
+
+            case RUN_AMPEROMETRY:  // 'H' run an amperometric experiment --> set the dac to a certain value
+                
+                if(AMP_ready_Flag || Load_EEPROM_Flag){
+                    
+                    user_chrono_lut_maker();   // Create a look up table for chronoamperometry            
+                    user_run_amperometry();
+                
+                }
+
+                break;
+                
+            case USER_START:  // 'I' fetch from memory and run an amperometry (USER GUI)
+                
+                //fetch potential value from EEPROM (save it in the correct global variable) --> TO BE ADDED
+                
+                
+                //run amperometry experiment   
+                user_chrono_lut_maker();   // Create a look up table for chronoamperometry            
+                user_run_amperometry();
+               
+
+                break;
+                
+                
+            }  // end of BLT switch statment
+            Input_Flag = false;  // turn off input flag because it has been processed
+            Command_ready_Flag=false;
+            
+            for (uint8_t i = 0; i < MAX_COMMAND_LENGTH; i++) //clear the command and wait for the next one
+            {
+                command[i] = 0;
+            }
+            command_lenght = 0;
+        }// end of if fo the commands
+        
+        
+    } // end of while(1)
+} // end of main
 
 /* [] END OF FILE */

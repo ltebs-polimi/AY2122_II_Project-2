@@ -46,37 +46,37 @@ void set_RTC(uint8_t current_seconds, uint8_t current_minutes, uint8_t current_h
     
     ErrorCode error = RTC_WriteRegister(RTC_ADDRESS, RTC_SECONDS, current_seconds);
     if(error == ERROR) {
-        UART_1_PutString("Error in setting the RTC seconds");
+        UART_DEBUG_PutString("Error in setting the RTC seconds");
     }
     
     error = RTC_WriteRegister(RTC_ADDRESS, RTC_MINUTES, current_minutes);
     if(error == ERROR) {
-        UART_1_PutString("Error in setting the RTC minutes");
+        UART_DEBUG_PutString("Error in setting the RTC minutes");
     }
     
     error = RTC_WriteRegister(RTC_ADDRESS, RTC_HOURS, current_hours);
     if(error == ERROR) {
-        UART_1_PutString("Error in setting the RTC hours");
+        UART_DEBUG_PutString("Error in setting the RTC hours");
     }
     
     error = RTC_WriteRegister(RTC_ADDRESS, RTC_DATE, current_date);
     if(error == ERROR) {
-        UART_1_PutString("Error in setting the RTC date");
+        UART_DEBUG_PutString("Error in setting the RTC date");
     }
     
     error = RTC_WriteRegister(RTC_ADDRESS, RTC_MONTH, current_month);
     if(error == ERROR) {
-        UART_1_PutString("Error in setting the RTC month");
+        UART_DEBUG_PutString("Error in setting the RTC month");
     }
     
     error = RTC_WriteRegister(RTC_ADDRESS, RTC_YEAR, current_year);
     if(error == ERROR) {
-        UART_1_PutString("Error in setting the RTC year");
+        UART_DEBUG_PutString("Error in setting the RTC year");
     }
     
     error = RTC_WriteRegister(RTC_ADDRESS, RTC_CTRL_REG, 0x00);
     if(error == ERROR) {
-        UART_1_PutString("Error in setting the RTC control register");
+        UART_DEBUG_PutString("Error in setting the RTC control register");
     }
  }
 
@@ -103,37 +103,37 @@ void rtc_read_time(uint8_t rtc_data_register) {
     
     error = RTC_ReadRegister(RTC_ADDRESS, RTC_SECONDS, &rtc_data_register);
     if(error == ERROR) {
-        UART_1_PutString("Error in reading the RTC seconds");
+        UART_DEBUG_PutString("Error in reading the RTC seconds");
     }
     current_seconds = RTC_convert_seconds(rtc_data_register);
     
     error = RTC_ReadRegister(RTC_ADDRESS, RTC_MINUTES, &rtc_data_register);
     if(error == ERROR) {
-        UART_1_PutString("Error in reading the RTC minutes");
+        UART_DEBUG_PutString("Error in reading the RTC minutes");
     }
     current_minutes = RTC_convert_minutes(rtc_data_register);
     
     error = RTC_ReadRegister(RTC_ADDRESS, RTC_HOURS, &rtc_data_register);
     if(error == ERROR) {
-        UART_1_PutString("Error in reading the RTC hours");
+        UART_DEBUG_PutString("Error in reading the RTC hours");
     }
     current_hours = RTC_convert_hours(rtc_data_register);
     
     error = RTC_ReadRegister(RTC_ADDRESS, RTC_DATE, &rtc_data_register);
     if(error == ERROR) {
-        UART_1_PutString("Error in reading the RTC date");
+        UART_DEBUG_PutString("Error in reading the RTC date");
     }
     current_date = RTC_convert_date(rtc_data_register);
     
     error = RTC_ReadRegister(RTC_ADDRESS, RTC_MONTH, &rtc_data_register);
     if(error == ERROR) {
-        UART_1_PutString("Error in reading the RTC month");
+        UART_DEBUG_PutString("Error in reading the RTC month");
     }
     current_month = RTC_convert_month(rtc_data_register);
     
     error = RTC_ReadRegister(RTC_ADDRESS, RTC_YEAR, &rtc_data_register);
     if(error == ERROR) {
-        UART_1_PutString("Error in reading the RTC year");
+        UART_DEBUG_PutString("Error in reading the RTC year");
     }
     current_year = RTC_convert_year(rtc_data_register) + 2000;
     
