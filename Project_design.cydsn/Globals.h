@@ -78,6 +78,7 @@
 
 // RTC USER-CHANGING GLOBALS
     char rtc_content[64];                           //String that contains the time stamp from rtc
+    char rtc_content_history[64];                   //String that contains the time stamp from rtc to display the history in Python GUI
     char glucose_content[64];                       //String that contains the measured glucose concentration value
     uint8_t current_seconds;
     uint8_t current_minutes;
@@ -96,6 +97,7 @@
 // EEPROM GLOBALS
     uint16_t eeprom_current_address;
     char spacer;                                    //Spacer code for EEPROM memory
+    uint8_t n_measures;                             //Number of done measures
 
 // GENERAL GLOBALS
     uint16 dac_ground_value;  // value to load in the DAC 

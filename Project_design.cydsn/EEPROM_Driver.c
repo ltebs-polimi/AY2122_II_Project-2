@@ -136,14 +136,15 @@ void save_current_measurement(uint8_t glucose_concentration) {
     }
     CyDelay(50);
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 6, spacer); 
+    /*error = EEPROM_WriteRegister(EEPROM_ADDRESS, eeprom_current_address + 6, spacer); 
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in saving spacer in EEPROM memory\r\n");
     }
-    CyDelay(50);
+    CyDelay(50);*/
     
-    eeprom_current_address += 7;
+    eeprom_current_address += 6;
     
+    //EEPROM current address saving
     error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x00, eeprom_current_address >> 8); 
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in saving EEPROM_H address in EEPROM memory\r\n");
@@ -155,10 +156,23 @@ void save_current_measurement(uint8_t glucose_concentration) {
         UART_DEBUG_PutString("\nError in saving EEPROM_L address in EEPROM memory\r\n");
     }
     CyDelay(50);
+    
+    //Saving number of measures
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x04, n_measures); 
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in saving number of measurements in EEPROM memory\r\n");
+    }
+    CyDelay(50);
+    
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x05, 255); 
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in saving spacer of measurements in EEPROM memory\r\n");
+    }
+    CyDelay(50);
 }
 
 /*  EEPROM SAVE CV RESULT
-*   \brief: Function that saves in the first positions of the EEPROM the CV result.
+*   \brief: Function that saves in the 3rd and 4th positions of the EEPROM the CV result.
 *   \Parameters: NONE
 *   \Return: NONE
 */
@@ -257,6 +271,43 @@ uint8_t get_measurement_from_memory(uint16_t eeprom_address) {
     UART_DEBUG_PutString(str);
     
     return data;
+}
+
+/*  DISPLAY HISTORY
+*   \brief: Function that recovers the history of all performed measures
+*           and displays them
+*   \Parameters: NONE
+*   \Return: NONE
+*/
+void display_history() {
+    ErrorCode error;
+    uint16_t current_address = get_eeprom_current_address();
+    uint8_t samples_number;
+    uint8_t data[6];
+    int len = 0;
+    uint8_t j = 0;
+    
+    error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x04, &samples_number);
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in reading samples number result from EEPROM memory\r\n");
+    }
+    
+    for(int i=0; i<samples_number; i++)
+    {
+        data[j] = get_measurement_from_memory(current_address-i);
+        if(data[j] == 255)
+        {
+            exit(0);
+        }
+        
+        if(j == 5)    //7 readings (glucose concentration value and time stamp)
+        {
+            len = snprintf(rtc_content_history, sizeof(rtc_content_history), "%d-%d-%d %02d:%02d -- %d\n", data[2], 
+                               data[3], data[4], data[1], data[0], data[5]);
+            UART_DEBUG_PutString(rtc_content_history);
+            j = 0;
+        }
+    }
 }
 
 /* [] END OF FILE */

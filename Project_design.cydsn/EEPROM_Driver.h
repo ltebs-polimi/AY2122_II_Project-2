@@ -17,6 +17,7 @@
 */
 #include <project.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #include "ErrorCodes.h"
@@ -38,6 +39,7 @@
     void save_CV_result(void);
     int16 get_CV_result(void);
     uint8_t get_measurement_from_memory(uint16_t eeprom_address);
+    void display_history(void);
     
 #endif
 
