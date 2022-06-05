@@ -787,7 +787,7 @@ class Ui_ClinicianWindow(object):
             # Add axis labels
         styles = {'color':'k', 'font-size':'15px'}
         self.graphWidget_CV.setLabel('left', 'Current [uA]', **styles)
-        self.graphWidget_CV.setLabel('bottom', 'Potential [V]', **styles)
+        self.graphWidget_CV.setLabel('bottom', 'Potential [mV]', **styles)
 
         self.graphWidget_AMP.setLabel('left', 'Current [uA]', **styles)
         self.graphWidget_AMP.setLabel('bottom', 'Time [s]', **styles)
@@ -829,7 +829,7 @@ class Ui_ClinicianWindow(object):
 
     def retranslateUi(self, ClinicianWindow):
         _translate = QtCore.QCoreApplication.translate
-        ClinicianWindow.setWindowTitle(_translate("ClinicianWindow", "MainWindow"))
+        ClinicianWindow.setWindowTitle(_translate("ClinicianWindow", "Clinician Screen"))
         self.Connection_button.setText(_translate("ClinicianWindow", ""))
         self.Connection_label.setText(_translate("ClinicianWindow", "NOT CONNECTED"))
         self.Time_CV_label.setText(_translate("ClinicianWindow", "TIME DURATION (sec):"))
