@@ -28,6 +28,7 @@
     #define START_CYCLIC_VOLTAMMETRY        'G'
     #define RUN_AMPEROMETRY                 'H'
     #define USER_START                      'I'
+    #define GUI_START                       'L'
     
 // API CONSTANTS
     #define true                             1

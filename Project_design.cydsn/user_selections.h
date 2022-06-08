@@ -38,7 +38,7 @@
     void user_reset_device(void);
     void user_identify(void);
     void user_set_isr_timer(uint16 scan_rate);
-    void user_chrono_lut_maker();
+    void user_chrono_lut_maker(int16 potential_max_current);
     uint16 user_lookup_table_maker(void);
     void user_run_amperometry(void);
 
