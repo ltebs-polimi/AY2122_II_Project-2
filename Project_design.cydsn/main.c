@@ -181,6 +181,9 @@ int main(void)
     isr_adcAmp_StartEx(adcAmpInterrupt);
     isr_adcAmp_Disable();
     
+    isr_dac_AMP_StartEx(adcDacInterrupt);
+    isr_dac_AMP_Disable();
+    
     isr_timer_StartEx(ISR_battery);
     
     TIA_SetResFB(TIA_RES_FEEDBACK_20K); //A 20KOhm feedback resistor is chosen for the TIA

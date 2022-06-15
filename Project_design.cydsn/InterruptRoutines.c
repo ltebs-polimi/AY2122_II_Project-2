@@ -25,9 +25,19 @@
 
 
 float uA_CV_scan[MAX_CV_LUT_SIZE];
-float uA_amp;
+float uA_amp = 0.0;
+float current_CV = 0.0;
+float array_current_CV[10];
 float32 R_analog_route = 0;
+float average_MA=0.0;
+float average_MA_first=0.0;
 int16 potential_max_current=0;
+int counter_amperometry = 0;
+int first_time=1;
+int16 valore_adc_mv_CV=0;
+int16 valore_adc_mv_AMP=0;
+
+
 
 
 // ISR used to run a CV scan 
@@ -62,25 +72,54 @@ CY_ISR(dacInterrupt)
 
 // ISR used to verify the error between the potential of the working electrode and the VIRTUAL GROUND at 2.048 V
 CY_ISR(adcInterrupt){
+   
+    if(lut_index<=9){
+        
+        valore_adc_mv_CV = ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
+        current_CV = (float)(-1)*(valore_adc_mv_CV)/20.0;
+        array_current_CV[lut_index]=current_CV;
+        average_MA_first += current_CV;
     
+    }else{
     
-    int16 valore_adc_mv_CV= ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
-    float current_CV= (float)(-1)*(valore_adc_mv_CV)/20.0;
-       
-    
-    len= snprintf(str, sizeof(str), "uA ADC read: %.8f\r\n", current_CV);
-    UART_DEBUG_PutString(str);
-    
-    len= snprintf(str, sizeof(str), "lut_value: %d\r\n", lut_value);
-    UART_DEBUG_PutString(str);
+        if(first_time){
+            
+            average_MA_first/=10.0; 
+            
+            first_time=0;
+        
+        }else{
+        
+            valore_adc_mv_CV= ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
+            current_CV= (float)(-1)*(valore_adc_mv_CV)/20.0;
+        
+            for(int k=0; k<9; k++){
+                array_current_CV[k]=array_current_CV[k+1];
+                average_MA += array_current_CV[k+1];
+            }
+            array_current_CV[9]=current_CV;
+            average_MA+=current_CV;
+            average_MA/=10.0;
+            
+            
+            len= snprintf(str, sizeof(str), "uA ADC read: %.8f\r\n", average_MA);
+            UART_DEBUG_PutString(str);
+            
+            len= snprintf(str, sizeof(str), "lut_value: %d\r\n", lut_value);
+            UART_DEBUG_PutString(str);
 
+            
+            //send out values with the UART for the CV graph --> int values
+            len= snprintf(str, sizeof(str), "A%.2fb%uz", average_MA, lut_value);
+            UART_BLT_PutString(str);
+            UART_DEBUG_PutString(str);
+            
+            
+        }
+        
     
-    //send out values with the UART for the CV graph --> int values
-    len= snprintf(str, sizeof(str), "A%.2fb%uz", current_CV, lut_value);
-    UART_BLT_PutString(str);
-    UART_DEBUG_PutString(str);
+    }
 
-    
     
 }
 
@@ -88,16 +127,29 @@ CY_ISR(adcInterrupt){
 // ISR used to get the data from the ADC in case of amperometry measurement
 CY_ISR(adcAmpInterrupt){
     
-    DVDAC_SetValue(lut_value); // this function sets the DVDAC value 
-    
-    int16 valore_adc_mv_AMP= ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
+    valore_adc_mv_AMP= ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
     uA_amp= (float)(-1)*(valore_adc_mv_AMP)/20.0;
     
-    //send out values with the UART for the AMP graph --> TO BE ADDED
+    //send out values with the UART for the AMP graph
+    len= snprintf(str, sizeof(str), "B%.2fc%uz", uA_amp, lut_index*100);
+    UART_BLT_PutString(str);
+    UART_DEBUG_PutString(str);
+}
+
+CY_ISR(adcDacInterrupt){
     
+            
+    DVDAC_SetValue(lut_value); // this function sets the DVDAC value     
     lut_index++;  
+    
     if (lut_index >= MAX_amp_LUT_SIZE) { // all the data points have been given
+        
+        len= snprintf(str, sizeof(str), "FF");
+        UART_BLT_PutString(str);
+        UART_DEBUG_PutString(str);
+        
         isr_adcAmp_Disable();
+        isr_dac_AMP_Disable();
 
         helper_HardwareSleep();
         lut_index = 0;
@@ -107,6 +159,7 @@ CY_ISR(adcAmpInterrupt){
        
     }
     lut_value = waveform_amp_lut[lut_index]; // take value from the AMP look up table
+    
 }
 
 CY_ISR(ISR_battery)
@@ -130,5 +183,6 @@ CY_ISR(ISR_battery)
         flag_btlvl_ready = 0;
     }
 }
+
 
 /* [] END OF FILE */

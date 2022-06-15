@@ -23,6 +23,7 @@
     CY_ISR_PROTO (adcInterrupt);
     CY_ISR_PROTO (adcAmpInterrupt);
     CY_ISR_PROTO (ISR_battery); 
+    CY_ISR_PROTO (adcDacInterrupt);
       
 #endif
 /* [] END OF FILE */
