@@ -4,6 +4,7 @@ import sys
 import time
 
 import logging
+from tkinter import FALSE
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import (
@@ -44,10 +45,16 @@ GRAPH_STATUS = False
 UPDATE_SCAN_FLAG=False 
 UPDATE_TIME_FLAG=False 
 RECEIVE_CV_DATA= False
+RECEIVE_AMP_DATA= False
 FINISHED_CV_GRAPH = False
+FINISHED_AMP_GRAPH = False
 PACKET_ARRIVED = False
 READ_PACKET_DATA= False
+PACKET_ARRIVED_AMP=False
+READ_PACKET_DATA_AMP=False
+
 LIMIT_REACHED= False
+LIMIT_REACHED_AMP=False
 
 UPDATE_SCAN = "B"
 UPDATE_INITIAL = "C"
@@ -58,7 +65,10 @@ UPDATE_TIME= "E"
 port_name_global = 0 
 current_CV = float(0.0)
 potential_CV = int(0)
+current_AMP= float(0.0)
+potential_AMP= int(0)
 stringa_prova=''
+stringa_prova_AMP=''
 
 
 # Global variables
@@ -209,8 +219,8 @@ class UpdateGraphSignals(QObject):
             int --> x value
             int --> y value
     """
-    plot_values = pyqtSignal(int, float)
-
+    plot_values_CV = pyqtSignal(int, float)
+    plot_values_AMP= pyqtSignal(int, float)
 
 
 
@@ -253,6 +263,7 @@ class UpdateGraphWorker(QRunnable):
         """
 
         global FINISHED_CV_GRAPH
+        global FINISHED_AMP_GRAPH
         global potential_CV
         global LIMIT_REACHED
         global RECEIVE_CV_DATA
@@ -268,7 +279,91 @@ class UpdateGraphWorker(QRunnable):
             while FINISHED_CV_GRAPH == False:
 
                 self.read_CV_plot()
+
+
+        if RECEIVE_AMP_DATA:
+
+            while FINISHED_AMP_GRAPH == False:
+
+                self.read_AMP_plot()
+
     
+    @pyqtSlot()
+    def read_AMP_plot(self):
+        global FINISHED_AMP_GRAPH
+        global RECEIVE_AMP_DATA
+        global READ_PACKET_DATA_AMP
+        global PACKET_ARRIVED_AMP
+        global potential_AMP
+        global current_AMP
+        global stringa_prova_AMP
+        global LIMIT_REACHED_AMP
+        stringa_current_AMP=''
+        stringa_potential_AMP=''
+        B_index=0
+        c_index=0
+        z_index=0
+
+        PACKET_ARRIVED_AMP= False
+        READ_PACKET_DATA_AMP = False
+
+
+        if RECEIVE_AMP_DATA:
+
+            if(self.port_graph.in_waiting>0):
+                stringa_prova_AMP += self.port_graph.read().decode('utf-8', errors='replace')
+                logging.info(stringa_prova_AMP)
+                PACKET_ARRIVED_AMP=True
+
+            if (PACKET_ARRIVED_AMP == True and stringa_prova_AMP[0] == 'B' and stringa_prova_AMP[len(stringa_prova_AMP)-1] == 'z'):
+                logging.info("packet_arrived_AMP")              
+                for i in range(len(stringa_prova_AMP)):
+                    if(stringa_prova_AMP[i])=='B':
+                        B_index=i
+
+                    if(stringa_prova_AMP[i])=='c':
+                        c_index=i
+
+                    if(stringa_prova_AMP[i])=='z':
+                        z_index=i
+
+                stringa_current_AMP = stringa_prova_AMP[B_index+1:c_index]
+                stringa_potential_AMP= stringa_prova_AMP[c_index+1:z_index]
+
+            
+                PACKET_ARRIVED_AMP = False
+                READ_PACKET_DATA_AMP = True
+
+
+            if PACKET_ARRIVED_AMP == True and stringa_prova_AMP=="FF":
+                LIMIT_REACHED_AMP=True
+                READ_PACKET_DATA_AMP=False
+
+
+            if(READ_PACKET_DATA_AMP == True):
+                current_AMP = float(stringa_current_AMP)
+                potential_AMP = int(stringa_potential_AMP)
+
+                logging.info(current_AMP)
+                logging.info(potential_AMP)
+
+                READ_PACKET_DATA_AMP= False
+
+                self.graph_signals.plot_values_AMP.emit(potential_AMP, current_AMP) 
+
+                stringa_prova_AMP=''
+                stringa_current_AMP=''
+                stringa_potential_AMP=''
+                B_index=0
+                c_index=0
+                z_index=0
+
+                self.port_graph.reset_input_buffer()
+
+
+            if(LIMIT_REACHED_AMP):
+                FINISHED_AMP_GRAPH = True
+
 
 
     @pyqtSlot()
@@ -332,7 +427,7 @@ class UpdateGraphWorker(QRunnable):
 
                 READ_PACKET_DATA= False
 
-                self.graph_signals.plot_values.emit(potential_CV, current_CV) 
+                self.graph_signals.plot_values_CV.emit(potential_CV, current_CV) 
 
                 stringa_prova=''
                 stringa_current=''
@@ -381,6 +476,7 @@ class Ui_ClinicianWindow(object):
     def setupUi(self, ClinicianWindow):
 
         self.serial_worker = SerialWorker(None)
+        self.upgrade_graph_worker = UpdateGraphWorker(None)
 
         # create thread handler
         self.threadpool = QThreadPool()
@@ -391,7 +487,9 @@ class Ui_ClinicianWindow(object):
 
         # Some random data
         self.x = [] 
-        self.y = []  
+        self.y = []
+        self.x_AMP = []  
+        self.y_AMP = [] 
 
 
 
@@ -709,13 +807,13 @@ class Ui_ClinicianWindow(object):
         self.gridLayout_7.addItem(spacerItem12, 3, 0, 1, 1)
         spacerItem13 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.gridLayout_7.addItem(spacerItem13, 3, 3, 1, 1)
-        self.Start_amp_button = QtWidgets.QPushButton(self.tab_4)
+        self.Start_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.draw_AMP())
         self.Start_amp_button.setObjectName("Start_amp_button")
         self.gridLayout_7.addWidget(self.Start_amp_button, 3, 1, 1, 2)
         self.Stop_amp_button = QtWidgets.QPushButton(self.tab_4)
         self.Stop_amp_button.setObjectName("Stop_amp_button")
         self.gridLayout_7.addWidget(self.Stop_amp_button, 3, 4, 1, 1)
-        self.Fetch_amp_button = QtWidgets.QPushButton(self.tab_4)
+        self.Fetch_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.send_fetch())
         self.Fetch_amp_button.setObjectName("Fetch_amp_button")
         self.gridLayout_7.addWidget(self.Fetch_amp_button, 0, 5, 1, 1)
 
@@ -790,7 +888,7 @@ class Ui_ClinicianWindow(object):
         self.graphWidget_CV.setLabel('bottom', 'Potential [mV]', **styles)
 
         self.graphWidget_AMP.setLabel('left', 'Current [uA]', **styles)
-        self.graphWidget_AMP.setLabel('bottom', 'Time [s]', **styles)
+        self.graphWidget_AMP.setLabel('bottom', 'Time [ms]', **styles)
             # Add legend
         self.graphWidget_CV.addLegend()
         self.graphWidget_AMP.addLegend()
@@ -855,6 +953,14 @@ class Ui_ClinicianWindow(object):
         self.connect_to_COM()
 
 
+    def send_fetch(self):
+        self.upgrade_graph_worker.send_graph('F')
+        time.sleep(0.01)
+        self.upgrade_graph_worker.send_graph('z')
+        time.sleep(0.01)
+
+
+
     def connect_to_COM(self):
 
         #scan continuously the serial port
@@ -884,6 +990,16 @@ class Ui_ClinicianWindow(object):
         self.CV_line.setData(self.x, self.y)  # Update the data.
 
 
+    def update_plot_data_AMP(self, potential_AMP, current_AMP):
+
+
+        self.x_AMP.append(potential_AMP)  # Add a new value 1 higher than the last.
+
+        self.y_AMP.append(current_AMP)  # Add a new random value.
+
+        self.AMP_line.setData(self.x_AMP, self.y_AMP)  # Update the data.
+
+
     ####################
     # SERIAL INTERFACE #
     ####################
@@ -908,7 +1024,6 @@ class Ui_ClinicianWindow(object):
     ##################
     # SERIAL SIGNALS #
     ##################
-
 
     @pyqtSlot(bool)
     def on_toggle(self, checked):
@@ -1099,9 +1214,10 @@ class Ui_ClinicianWindow(object):
         @brief Draw the plots.
         """
         global RECEIVE_CV_DATA
+        global RECEIVE_AMP_DATA
 
 
-        self.serial_worker.send('F')
+        self.serial_worker.send('G')
         time.sleep(0.1)
         self.serial_worker.send('z')
         time.sleep(0.1)
@@ -1114,13 +1230,14 @@ class Ui_ClinicianWindow(object):
 
         self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
         # connect worker signals to functions
-        self.graph_worker.graph_signals.plot_values.connect(self.update_plot_data)
+        self.graph_worker.graph_signals.plot_values_CV.connect(self.update_plot_data)
 
+        RECEIVE_AMP_DATA=False
+        RECEIVE_CV_DATA  = True
 
         # execute the worker
         self.threadpool.start(self.graph_worker)
 
-        RECEIVE_CV_DATA  = True
 
 
 
@@ -1129,7 +1246,31 @@ class Ui_ClinicianWindow(object):
         """!
         @brief Draw the plots.
         """
-        self.AMP_line = self.plot(self.graphWidget_AMP, self.x, self.y, 'AMP','r')
+        global RECEIVE_AMP_DATA
+        global RECEIVE_CV_DATA
+
+        self.graph_worker.send_graph('H')
+        time.sleep(0.1)
+        self.graph_worker.send_graph('z')
+        time.sleep(0.1)
+
+
+        self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP, 'AMP','r')
+        
+        self.graph_worker.is_killed = True
+        self.graph_worker.killed_graph()
+        time.sleep(0.5)
+
+        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
+
+        self.graph_worker.graph_signals.plot_values_AMP.connect(self.update_plot_data_AMP)
+
+        RECEIVE_CV_DATA = False       
+        RECEIVE_AMP_DATA = True
+
+        # execute the worker
+        self.threadpool.start(self.graph_worker)
+
 
 
     @pyqtSlot()
