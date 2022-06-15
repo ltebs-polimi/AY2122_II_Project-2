@@ -17,6 +17,7 @@
     
     #include "cytypes.h"
     #include "stdio.h"
+    #include "OLED_Driver.h" 
     
     CY_ISR_PROTO (Custom_ISR_RX);
     CY_ISR_PROTO (dacInterrupt);

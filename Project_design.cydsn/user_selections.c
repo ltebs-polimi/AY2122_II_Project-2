@@ -144,7 +144,8 @@ void user_set_isr_timer(uint16 scan_rate) {
 void user_chrono_lut_maker(int16 potential_max) {
     PWM_isr_Wakeup();
     
-    PWM_isr_WritePeriod(PWM_PERIOD_10_ms);  //period of the PWM fixed at 10 ms for a chronoamperometry experiment
+    PWM_isr_WritePeriod(PWM_PERIOD_10_ms*10);  //period of the PWM fixed at 10 ms for a chronoamperometry experiment
+    PWM_isr_WriteCompare((PWM_PERIOD_10_ms*10)/2+1);
     LUT_MakePulse(0, potential_max); //it creates a look up table for chronoamperometry based on these values of baseline and pulse voltage
     lut_value = waveform_amp_lut[0];  // setup the dac so when it starts it will be at the correct voltage
                 
@@ -197,10 +198,11 @@ void user_run_amperometry(void) {
     uint16 dac_value = 0;  // Start by setting 0 to the DAC
     lut_index = 0;
     DVDAC_SetValue(dac_value);
-    
+    CyDelay(1);
     ADC_SigDel_StartConvert(); // looh at the isr_adcamp in the main.c for the actual operation 
-    CyDelay(15);
+    CyDelay(40);
     isr_adcAmp_Enable();
+    isr_dac_AMP_Enable();
 
 }
 /* [] END OF FILE */

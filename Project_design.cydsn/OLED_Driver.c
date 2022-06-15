@@ -974,16 +974,21 @@ void OLED_loading(){
     rtx_println(glucose_content);
     display_update();
     
-    if(lut_index%100 == 0)
+    if(lut_index%10 == 0 && lut_index != 0)
     {
         chronoAmp_progress += 5;
         rtx_fillRect(START_LOADING_BAR + chronoAmp_progress, 40, 4, 10, WHITE);
         display_update();
-        if(chronoAmp_progress == 100)
+        len = snprintf(rtc_content, sizeof(rtc_content), "lut index oled driver: %d\r\n", lut_index);
+        UART_DEBUG_PutString(rtc_content);
+        /*if(chronoAmp_progress == 100)
         {
             finished_chronoAmp = 1;
             chronoAmp_progress = 0;
-        }
-    }    
+            lut_index = 0;
+        }*/
+    }
+    
+
 }
 /* [] END OF FILE */

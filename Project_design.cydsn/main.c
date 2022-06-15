@@ -51,6 +51,7 @@ int main(void)
     battery_level_OLED = 0;
     flag_bluetooth = 0;
     flag_bluetooth_old = 1;
+    flag_first_chrono = 1;
     
     current_seconds_old = 0;
     current_minutes_old = 0;
@@ -68,6 +69,7 @@ int main(void)
     
     btlvl_count = 0;
     flag_btlvl_ready = 0;
+    lut_index_old = 1;
     
     spacer = 'A';
    
@@ -267,17 +269,25 @@ int main(void)
                 
             case LOADING:
                 
-                //fetch from EEPROM the needed data
-                potential_EEPROM = get_CV_result();                
-                
-                user_chrono_lut_maker(potential_EEPROM);   // Create a look up table for chronoamperometry            
-                user_run_amperometry();
+                if(flag_first_chrono == 1)
+                {
+                    //fetch from EEPROM the needed data
+                    potential_EEPROM = get_CV_result();                
+                    
+                    user_chrono_lut_maker(2000);   // Create a look up table for chronoamperometry            
+                    user_run_amperometry();
+                    CyDelay(1000);
+                    flag_first_chrono = 0;
+                }
                 
                 if(!finished_chronoAmp)
                 {
-                    OLED_loading();
+                    /*if(lut_index_old!=lut_index){
+                        OLED_loading();
+                    }*/
                 } else {
                     state = DISPLAY_MEASUREMENT;
+                    flag_first_chrono = 1;
                 }
                 
             break;
@@ -462,6 +472,7 @@ int main(void)
 
                     case RUN_AMPEROMETRY:  // 'H' run an amperometric experiment --> set the dac to a certain value
                         
+                        CyDelay(1000);
                         if(AMP_ready_Flag || Load_EEPROM_Flag){
                             
                             user_chrono_lut_maker(potential_max_current);   // Create a look up table for chronoamperometry            

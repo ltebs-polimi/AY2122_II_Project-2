@@ -109,11 +109,11 @@ uint16 LUT_make_line(uint16 start, uint16 end, uint16 index) {
 
 void LUT_MakePulse(uint16 base, uint16 pulse) {
     int _lut_index = 0;
-    while (_lut_index < 100) {  //set the base value for the first 100 values (@10 ms (i.e. 100Hz), it means that for 1 sec we are imposing the base value)
+    while (_lut_index < 10) {  //set the base value for the first 100 values (@10 ms (i.e. 100Hz), it means that for 1 sec we are imposing the base value)
         waveform_amp_lut[_lut_index] = base;
         _lut_index++;
     }
-    while (_lut_index < 2000) { //set the pulse value for the following 1900 values (@10 ms (i.e. 100Hz), it means that for 19 secs we are imposing the pulse value)
+    while (_lut_index < 200) { //set the pulse value for the following 1900 values (@10 ms (i.e. 100Hz), it means that for 19 secs we are imposing the pulse value)
         waveform_amp_lut[_lut_index] = pulse;
         _lut_index++;
     }

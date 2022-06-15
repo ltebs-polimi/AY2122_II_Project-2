@@ -43,7 +43,7 @@
 // LUT CONSTANTS
     //Define how big to make the arrays for the lut     
     #define MAX_CV_LUT_SIZE 5000
-    #define MAX_amp_LUT_SIZE 2000
+    #define MAX_amp_LUT_SIZE 200
         
 // I2C TRANSFER RESULT STATUS
     #define TRANSFER_CMPLT                  0x00u
@@ -61,6 +61,7 @@
     uint8_t Update_endvalue_Flag;
     uint8_t Update_timevalue_Flag;
     uint8_t Button_Flag;
+    uint8_t flag_first_chrono;
     
 // MAIN GLOBALS
     char state;
@@ -110,18 +111,19 @@
         
         
     /* Make global variables needed for the DAC/ADC interrupt service routines */
-    uint16 lut_value;  // value need to load DAC
-    uint16 waveform_CV_lut[MAX_CV_LUT_SIZE];  // look up table to store CV waveform
-    uint16 waveform_amp_lut[MAX_amp_LUT_SIZE];  // look up table to store chronoamperometry waveform
-    uint16 lut_index;  // look up table index
-    uint16_t lut_length; // look up table length
-    uint16 ADC_CV_array[MAX_CV_LUT_SIZE]; //array to store the ADC readings when performing a CV scan
+    uint16 lut_value;                               // value need to load DAC
+    uint16 waveform_CV_lut[MAX_CV_LUT_SIZE];        // look up table to store CV waveform
+    uint16 waveform_amp_lut[MAX_amp_LUT_SIZE];      // look up table to store chronoamperometry waveform
+    uint16 lut_index;                               // look up table index
+    uint16 lut_index_old;
+    uint16_t lut_length;                            // look up table length
+    uint16 ADC_CV_array[MAX_CV_LUT_SIZE];           //array to store the ADC readings when performing a CV scan
     float uA_per_adc_count;
 
     /* Variables for CV */
     uint16 start_dac_value;
     uint16 end_dac_value;
-    int16 potential_max_current; //value of potential at which the maximum current is found
+    int16 potential_max_current;                    //value of potential at which the maximum current is found
     uint16 selected_scan_rate;
 
     /* Variables for the received commands via UART */
