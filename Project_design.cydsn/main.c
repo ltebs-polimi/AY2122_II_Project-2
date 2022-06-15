@@ -48,7 +48,7 @@ int main(void)
     //Global variables initialization
     state = 0;
     power_on = 1;
-    battery_level = 55;
+    battery_level_OLED = 0;
     flag_bluetooth = 0;
     flag_bluetooth_old = 1;
     
@@ -66,9 +66,11 @@ int main(void)
     glucose_concentration = 100;
     glucose_concentration_old = 0;
     
-    spacer = 'A';
+    btlvl_count = 0;
+    flag_btlvl_ready = 0;
     
-
+    spacer = 'A';
+   
     
     CyGlobalIntEnable;
     
@@ -99,7 +101,7 @@ int main(void)
       Seconds, Minutes, Hours, Date, Month, Year
       Then run the program, re-comment the line and re-run the program
     */
-    //set_RTC(0x00,0x07,0x13,0x25,MAY,Y_2022);
+    //set_RTC(0x45,0x23,0x13,0x16,JUNE,Y_2022);
     
     uint8_t glucose_concentration_from_memory = 0;
     char flag = 0;
@@ -179,6 +181,8 @@ int main(void)
     isr_adcAmp_StartEx(adcAmpInterrupt);
     isr_adcAmp_Disable();
     
+    isr_timer_StartEx(ISR_battery);
+    
     TIA_SetResFB(TIA_RES_FEEDBACK_20K); //A 20KOhm feedback resistor is chosen for the TIA
     
         
@@ -226,7 +230,7 @@ int main(void)
                 button_state = Pin_Button_Read();
                 //len = snprintf(message, sizeof(message), "%d\n", button_state);
                 //UART_DEBUG_PutString(message);
-                if(!button_state) {
+                if(button_state==0) {
                     state = LOADING;
                     Button_Flag = false;
                     display_clear();                    
@@ -237,7 +241,7 @@ int main(void)
                 {
                     Input_Flag=true;
                     uint8_t received_char = UART_BLT_GetChar();
-                    command[command_lenght] = received_char;
+                    command[command_lenght] = received_char;                 
                     command_lenght += 1;
                     
                 }
@@ -279,7 +283,7 @@ int main(void)
                 finished_chronoAmp = 0;
                 if(power_on){
                     power_on = 0;
-                    display_battery_level(battery_level);
+                    display_battery_level(battery_level_OLED);
 
                 }
                 

@@ -254,6 +254,7 @@
       <Data key="1dac1ca4-600c-4c91-97a2-98957ccf9492" value="UART_RX" />
       <Data key="3dc73772-90fb-406c-84c0-4a1bd9d79466" value="Pin_Reset" />
       <Data key="8d318d8b-cf7b-4b6b-b02c-ab1c5c49d0ba" value="Pin_Button" />
+      <Data key="9c33c53e-952e-4e9c-b19b-8be618b20a33/16a808f6-2e13-45b9-bce0-b001c8655113" value="ADC_SAR_1_Bypass" />
       <Data key="264be2d3-9481-494b-8d9c-c1905a45e9cc" value="Sda" />
       <Data key="830c1cf8-6447-45c1-a307-1609af586bb0" value="Working_Electrode" />
       <Data key="7929ae1c-f25e-458b-bbe3-b774d19c1953" value="Scl" />
@@ -262,6 +263,7 @@
       <Data key="77715107-f8d5-47e5-a629-0fb83101ac6b" value="Pin_DVDAC_cap" />
       <Data key="b2d132b3-c775-4961-b96c-6741bbe3c25a" value="TIA_end_pin" />
       <Data key="b8dc6e52-1de7-46e5-82e7-419467d99a06" value="UART_TX" />
+      <Data key="cb20a87e-c9d0-4f34-b78e-5b100bf770b1" value="BTLVL_pin" />
       <Data key="cc3bcd7e-5dc0-48ea-9bf6-6aa082be1ada" value="Counter_Electrode" />
       <Data key="ed092b9b-d398-4703-be89-cebf998501f6" value="Tx_1" />
     </Group>
@@ -3403,6 +3405,11 @@
     <Group key="b8dc6e52-1de7-46e5-82e7-419467d99a06">
       <Group key="0">
         <Data key="Port Format" value="2,4" />
+      </Group>
+    </Group>
+    <Group key="cb20a87e-c9d0-4f34-b78e-5b100bf770b1">
+      <Group key="0">
+        <Data key="Port Format" value="3,0" />
       </Group>
     </Group>
     <Group key="cc3bcd7e-5dc0-48ea-9bf6-6aa082be1ada">

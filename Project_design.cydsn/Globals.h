@@ -73,7 +73,6 @@
  
 // OLED GLOBALS
     uint8_t power_on;                               //Flag that signals the power on of the device
-    uint8_t battery_level;
     uint8_t flag_bluetooth;                         //Flag that monitors bluetooth connection status
     uint8_t flag_bluetooth_old;                     //Previous bluetooth connection status
 
@@ -100,8 +99,14 @@
     char spacer;                                    //Spacer code for EEPROM memory
     uint8_t n_measures;                             //Number of done measures
 
+// BATTERY GLOBALS
+    uint16_t btlvl_count;
+    uint16_t bt_level;
+    uint8_t flag_btlvl_ready;
+    uint8_t battery_level_OLED;
+
 // GENERAL GLOBALS
-    uint16 dac_ground_value;  // value to load in the DAC 
+    uint16 dac_ground_value;  // value to load in the DAc
         
         
     /* Make global variables needed for the DAC/ADC interrupt service routines */

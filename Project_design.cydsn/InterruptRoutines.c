@@ -109,4 +109,26 @@ CY_ISR(adcAmpInterrupt){
     lut_value = waveform_amp_lut[lut_index]; // take value from the AMP look up table
 }
 
+CY_ISR(ISR_battery)
+{
+    Timer_ReadStatusRegister(); //To reset the timer
+    
+    btlvl_count++;
+    
+    //At the power on or every 5 min the battery indicator is updated
+    if(btlvl_count == 0 || btlvl_count == 301)
+    {
+        btlvl_count = 1;
+        ADC_SAR_IRQ_Enable();
+        ADC_SAR_StartConvert();
+        
+        while(flag_btlvl_ready == 0);
+        bt_level = ADC_SAR_CountsTo_mVolts(bt_level);
+        
+        //Conversion in percentage
+        battery_level_OLED = (bt_level*100)/5;
+        flag_btlvl_ready = 0;
+    }
+}
+
 /* [] END OF FILE */

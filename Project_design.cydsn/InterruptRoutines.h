@@ -18,12 +18,11 @@
     #include "cytypes.h"
     #include "stdio.h"
     
-
-    
     CY_ISR_PROTO (Custom_ISR_RX);
     CY_ISR_PROTO (dacInterrupt);
     CY_ISR_PROTO (adcInterrupt);
-    CY_ISR_PROTO (adcAmpInterrupt); 
+    CY_ISR_PROTO (adcAmpInterrupt);
+    CY_ISR_PROTO (ISR_battery); 
       
 #endif
 /* [] END OF FILE */

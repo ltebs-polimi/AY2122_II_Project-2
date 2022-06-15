@@ -864,7 +864,7 @@ void display_bluetooth_connection(uint8_t flag_bluetooth){
     if(flag_bluetooth != flag_bluetooth_old)
     {
         display_clear();
-        display_battery_level(battery_level);
+        display_battery_level(battery_level_OLED);
         rtc_display_time();
         flag_bluetooth_old = flag_bluetooth;
         if(flag_bluetooth==1)
