@@ -76,6 +76,17 @@ int main(void)
     
     CyGlobalIntEnable;
     
+    //Initialize Interrupt routines variables
+    uA_amp = 0.0;
+    current_CV = 0.0;
+    average_MA=0.0;
+    average_MA_first=0.0;
+    potential_max_current=0;
+    counter_amperometry = 0;
+    first_time=1;
+    valore_adc_mv_CV=0;
+    valore_adc_mv_AMP=0;
+    
     
     //Initialize flags values
     Input_Flag=false;
@@ -186,7 +197,7 @@ int main(void)
     isr_dac_AMP_StartEx(adcDacInterrupt);
     isr_dac_AMP_Disable();
     
-    isr_timer_StartEx(ISR_battery);
+    //isr_timer_StartEx(ISR_battery);
     
     TIA_SetResFB(TIA_RES_FEEDBACK_20K); //A 20KOhm feedback resistor is chosen for the TIA
     
@@ -445,7 +456,7 @@ int main(void)
                         break;    
                         
 
-                    case CLINICIAN_FETCH: // 'F' Set the time duration for the CV scan (in seconds)
+                    case CLINICIAN_FETCH: 
                         
                         //fetch potential value from EEPROM (save it in the correct global variable) --> TO BE ADDED
                         potential_max_current=get_CV_result();

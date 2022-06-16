@@ -49,7 +49,7 @@ void helper_HardwareStart(void){  // start all the components that have to be on
     VDAC_TIA_Start();  
     Opamp_Aux_Start();  
     PWM_isr_Start();
-    ADC_SAR_Start();
+    //ADC_SAR_Start();
     
     //DVDAC is already started
     

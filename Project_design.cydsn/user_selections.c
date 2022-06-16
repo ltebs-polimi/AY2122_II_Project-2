@@ -47,6 +47,8 @@ void user_start_cv_run(void){
     if (!isr_dac_GetState()){  // enable the dac isr if it isn't already enabled
         if (isr_adcAmp_GetState()) {  // User has started cyclic voltammetry while amp is already running, so disable amperometry
             isr_adcAmp_Disable();
+            isr_dac_AMP_Disable();
+            
         }
         lut_index = 0;  // start at the beginning of the look up table
         lut_value = waveform_CV_lut[0];

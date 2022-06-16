@@ -108,6 +108,21 @@
 
 // GENERAL GLOBALS
     uint16 dac_ground_value;  // value to load in the DAc
+    
+//  INTERRUPTS GLOBALS
+    
+float uA_CV_scan[MAX_CV_LUT_SIZE];
+float uA_amp;
+float current_CV;
+float array_current_CV[10];
+float32 R_analog_route;
+float average_MA;
+float average_MA_first;
+int16 potential_max_current;
+int counter_amperometry;
+int first_time;
+int16 valore_adc_mv_CV;
+int16 valore_adc_mv_AMP;
         
         
     /* Make global variables needed for the DAC/ADC interrupt service routines */
