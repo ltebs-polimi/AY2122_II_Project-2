@@ -276,7 +276,6 @@ int main(void)
                     
                     user_chrono_lut_maker(2000);   // Create a look up table for chronoamperometry            
                     user_run_amperometry();
-                    CyDelay(1000);
                     flag_first_chrono = 0;
                 }
                 
