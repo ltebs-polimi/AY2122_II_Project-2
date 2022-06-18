@@ -109,7 +109,7 @@ int main(void)
 
     display_init(DISPLAY_ADDRESS);
     rtc_init(RTC_ADDRESS);
-    eeprom_current_address = 0x0000;
+    eeprom_current_address = 0x0006;
     
     /*If you want to setup the RTC, uncomment the following line and insert the needed informations, in order.
       Seconds, Minutes, Hours, Date, Month, Year
@@ -461,7 +461,7 @@ int main(void)
                     case CLINICIAN_FETCH: 
                         
                         //fetch potential value from EEPROM (save it in the correct global variable) 
-                        potential_max_current=get_CV_result();
+                        potential_max_current = get_CV_result();
                         
                         len= snprintf(str, sizeof(str), "Potential max current: %d\r\n", potential_max_current);
                         UART_DEBUG_PutString(str);
@@ -494,7 +494,7 @@ int main(void)
                         save_CV_result();
                         UART_DEBUG_PutString("Saved potential in EEPROM\r\n");
                         
-                        potential_max_current=get_CV_result();
+                        potential_max_current = get_CV_result();
                         len= snprintf(str, sizeof(str), "Potential max current: %d\r\n", potential_max_current);
                         UART_DEBUG_PutString(str);
                         

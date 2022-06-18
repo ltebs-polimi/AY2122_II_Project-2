@@ -144,26 +144,26 @@ void save_current_measurement(uint8_t glucose_concentration) {
     eeprom_current_address += 6;
     
     //EEPROM current address saving
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x00, eeprom_current_address >> 8); 
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x0000, eeprom_current_address >> 8); 
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in saving EEPROM_H address in EEPROM memory\r\n");
     }
     CyDelay(50);
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x01, eeprom_current_address & 0xFF); 
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x0001, eeprom_current_address & 0xFF); 
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in saving EEPROM_L address in EEPROM memory\r\n");
     }
     CyDelay(50);
     
     //Saving number of measures
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x04, n_measures); 
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x0004, n_measures); 
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in saving number of measurements in EEPROM memory\r\n");
     }
     CyDelay(50);
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x05, 255); 
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x0005, 255); 
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in saving spacer of measurements in EEPROM memory\r\n");
     }
@@ -181,20 +181,20 @@ void save_CV_result(){
     len= snprintf(str, sizeof(str), "Potential max current in SAVE FUNCTION: %d\r\n", potential_max_current);
     UART_DEBUG_PutString(str);    
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x02, (potential_max_current >> 8));
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x0002, (potential_max_current >> 8));
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in saving CV_H result in EEPROM memory\r\n");
     }
     CyDelay(50);
     
-    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x03, (potential_max_current & 0xFF));
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x0003, (potential_max_current & 0xFF));
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in saving CV_L result in EEPROM memory\r\n");
     }
     CyDelay(50);
 }
 
-/*  EEPROM SAVE CV RESULT
+/*  EEPROM GET CV RESULT
 *   \brief: Function that fetches in the first positions of the EEPROM the CV result.
 *   \Parameters: NONE
 *   \Return:  
@@ -206,12 +206,14 @@ int16 get_CV_result() {
     uint8 data_L;
     int16 data = 0;
     
-    error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x02, &data_H);
+    error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x0002, &data_H);
+    CyDelay(50);
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in reading CV_H result from EEPROM memory\r\n");
     }
     
-    error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x03, &data_L);
+    error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x0003, &data_L);
+    CyDelay(50);
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in reading CV_L result from EEPROM memory\r\n");
     }
@@ -239,11 +241,13 @@ uint16_t get_eeprom_current_address(){
     uint16 data = 0;
     
     error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x00, &data_H);
+    CyDelay(50);
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in reading EEPROM_H address from EEPROM memory\r\n");
     }
     
     error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x01, &data_L);
+    CyDelay(50);
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in reading EEPROM_L address from EEPROM memory\r\n");
     }
@@ -268,7 +272,7 @@ uint8_t get_measurement_from_memory(uint16_t eeprom_address) {
     char str[64];
     
     error = EEPROM_ReadRegister(EEPROM_ADDRESS, eeprom_address, &data);
-    
+    CyDelay(50);
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in reading data from EEPROM memory\r\n");
     }
@@ -294,6 +298,7 @@ void display_history() {
     uint8_t j = 0;
     
     error = EEPROM_ReadRegister(EEPROM_ADDRESS, 0x04, &samples_number);
+    CyDelay(50);
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in reading samples number result from EEPROM memory\r\n");
     }
