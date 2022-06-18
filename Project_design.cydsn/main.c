@@ -76,14 +76,26 @@ int main(void)
     
     CyGlobalIntEnable;
     
+    //Initialize Interrupt routines variables
+    uA_amp = 0.0;
+    current_CV = 0.0;
+    current_CV_old=0.0;
+    average_MA=0.0;
+    average_MA_first=0.0;
+    potential_max_current=0;
+    counter_amperometry = 0;
+    first_time=1;
+    valore_adc_mv_CV=0;
+    valore_adc_mv_AMP=0;
+    max_rel=0.0;
     
     //Initialize flags values
     Input_Flag=false;
     Command_ready_Flag=false;
     TIA_Calibration_ended_Flag=false;
     CV_ready_Flag=false;
+    CV_finished_flag=false;
     AMP_ready_Flag=false;
-    Load_EEPROM_Flag=false;
     Update_scanrate_Flag=false;
     Update_startvalue_Flag=false;
     Update_endvalue_Flag=false;
@@ -165,8 +177,6 @@ int main(void)
     ADC_SigDel_SelectConfiguration(1, DO_NOT_RESTART_ADC); // select the configuration to be used for the ADC (2 possible configurations --> SERVONO ???)
     
     
-    //LOAD VALUES FROM THE EEPROM --> TO BE ADDED (set the Load_EEPROM_Flag=true when ended)
-    
     
     //Start the UART (used by the BT) and the corresponding isr
     UART_BLT_Start();
@@ -186,7 +196,7 @@ int main(void)
     isr_dac_AMP_StartEx(adcDacInterrupt);
     isr_dac_AMP_Disable();
     
-    isr_timer_StartEx(ISR_battery);
+    //isr_timer_StartEx(ISR_battery);
     
     TIA_SetResFB(TIA_RES_FEEDBACK_20K); //A 20KOhm feedback resistor is chosen for the TIA
     
@@ -338,7 +348,11 @@ int main(void)
                     }
                 }
                 
-                
+                if(CV_finished_flag==true){
+                    command[0]='I';
+                    CV_finished_flag=false;
+                    Command_ready_Flag=true;
+                }
                 
                 //Check if something has been received by the UART 
                 if (Command_ready_Flag == true && Button_Flag==true) {  
@@ -444,10 +458,17 @@ int main(void)
                         break;    
                         
 
-                    case CLINICIAN_FETCH: // 'F' Set the time duration for the CV scan (in seconds)
+                    case CLINICIAN_FETCH: 
                         
-                        //fetch potential value from EEPROM (save it in the correct global variable) --> TO BE ADDED
+                        //fetch potential value from EEPROM (save it in the correct global variable) 
                         potential_max_current=get_CV_result();
+                        
+                        len= snprintf(str, sizeof(str), "Potential max current: %d\r\n", potential_max_current);
+                        UART_DEBUG_PutString(str);
+                        
+                        CyDelay(2000);
+                        user_chrono_lut_maker(potential_max_current);   // Create a look up table for chronoamperometry            
+                        user_run_amperometry();                        
                         
                         break;    
                         
@@ -467,12 +488,24 @@ int main(void)
                         }
                         
                         break;
+                        
+                    case FINISHED_CV:
+                        
+                        save_CV_result();
+                        UART_DEBUG_PutString("Saved potential in EEPROM\r\n");
+                        
+                        potential_max_current=get_CV_result();
+                        len= snprintf(str, sizeof(str), "Potential max current: %d\r\n", potential_max_current);
+                        UART_DEBUG_PutString(str);
+                        
+                        break;
                     
 
                     case RUN_AMPEROMETRY:  // 'H' run an amperometric experiment --> set the dac to a certain value
                         
-                        CyDelay(1000);
-                        if(AMP_ready_Flag || Load_EEPROM_Flag){
+                        CyDelay(2000);
+                        
+                        if(AMP_ready_Flag){
                             
                             user_chrono_lut_maker(potential_max_current);   // Create a look up table for chronoamperometry            
                             user_run_amperometry();
@@ -484,14 +517,16 @@ int main(void)
                         
                         
                     }  // end of BLT switch statment
+                    
                     Input_Flag = false;  // turn off input flag because it has been processed
-                    Command_ready_Flag=false;
+                    Command_ready_Flag = false;
                     
                     for (uint8_t i = 0; i < MAX_COMMAND_LENGTH; i++) //clear the command and wait for the next one
                     {
                         command[i] = 0;
                     }
                     command_lenght = 0;
+                    
                 }// end of if for the commands
             
             break;

@@ -236,7 +236,7 @@ class UpdateGraphWorker(QRunnable):
         @brief Init worker.
         """
         global GRAPH_STATUS
-        self.is_killed = False
+        self.is_killed_graph = False
 
         super().__init__()
 
@@ -464,7 +464,7 @@ class UpdateGraphWorker(QRunnable):
         @brief Close the serial port before closing the app.
         """
         global GRAPH_STATUS
-        if self.is_killed:
+        if self.is_killed_graph:
             self.port_graph.close()
             time.sleep(0.01)
             GRAPH_STATUS = False
@@ -813,7 +813,7 @@ class Ui_ClinicianWindow(object):
         self.Stop_amp_button = QtWidgets.QPushButton(self.tab_4)
         self.Stop_amp_button.setObjectName("Stop_amp_button")
         self.gridLayout_7.addWidget(self.Stop_amp_button, 3, 4, 1, 1)
-        self.Fetch_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.send_fetch())
+        self.Fetch_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.draw_fetch())
         self.Fetch_amp_button.setObjectName("Fetch_amp_button")
         self.gridLayout_7.addWidget(self.Fetch_amp_button, 0, 5, 1, 1)
 
@@ -953,13 +953,6 @@ class Ui_ClinicianWindow(object):
         self.connect_to_COM()
 
 
-    def send_fetch(self):
-        self.upgrade_graph_worker.send_graph('F')
-        time.sleep(0.01)
-        self.upgrade_graph_worker.send_graph('z')
-        time.sleep(0.01)
-
-
 
     def connect_to_COM(self):
 
@@ -1053,7 +1046,7 @@ class Ui_ClinicianWindow(object):
                 # kill graph thread
                 self.Connection_label.setStyleSheet("background-color:rgb(255,0,0);")
                 self.Connection_label.setText("NOT CONNECTED")
-                self.graph_worker.is_killed = True
+                self.graph_worker.is_killed_graph = True
                 self.graph_worker.killed_graph()
                 self.Connection_port_label.setDisabled(False) 
                 self.Connection_button.setText(
@@ -1202,7 +1195,7 @@ class Ui_ClinicianWindow(object):
         """
         self.serial_worker.is_killed = True
         self.serial_worker.killed()
-        self.graph_worker.is_killed = True
+        self.graph_worker.is_killed_graph = True
         self.graph_worker.killed_graph()       
 
     ##################
@@ -1257,12 +1250,42 @@ class Ui_ClinicianWindow(object):
 
         self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP, 'AMP','r')
         
-        self.graph_worker.is_killed = True
+        self.graph_worker.is_killed_graph = True
         self.graph_worker.killed_graph()
         time.sleep(0.5)
 
         self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
 
+        self.graph_worker.graph_signals.plot_values_AMP.connect(self.update_plot_data_AMP)
+
+        RECEIVE_CV_DATA = False       
+        RECEIVE_AMP_DATA = True
+
+        # execute the worker
+        self.threadpool.start(self.graph_worker)
+
+
+    def draw_fetch(self):
+        """!
+        @brief Draw the plots.
+        """
+        global RECEIVE_CV_DATA
+        global RECEIVE_AMP_DATA
+
+
+        self.serial_worker.send('F')
+        time.sleep(0.1)
+        self.serial_worker.send('z')
+        time.sleep(0.1)
+ 
+        self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP, 'AMP','r')
+
+        self.serial_worker.is_killed = True
+        self.serial_worker.killed()
+        time.sleep(0.5)
+
+        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
+        # connect worker signals to functions
         self.graph_worker.graph_signals.plot_values_AMP.connect(self.update_plot_data_AMP)
 
         RECEIVE_CV_DATA = False       
