@@ -810,7 +810,7 @@ class Ui_ClinicianWindow(object):
         self.Start_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.draw_AMP())
         self.Start_amp_button.setObjectName("Start_amp_button")
         self.gridLayout_7.addWidget(self.Start_amp_button, 3, 1, 1, 2)
-        self.Stop_amp_button = QtWidgets.QPushButton(self.tab_4)
+        self.Stop_amp_button = QtWidgets.QPushButton(self.tab_4, clicked=self.graphWidget_AMP.clear)
         self.Stop_amp_button.setObjectName("Stop_amp_button")
         self.gridLayout_7.addWidget(self.Stop_amp_button, 3, 4, 1, 1)
         self.Fetch_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.draw_fetch())
