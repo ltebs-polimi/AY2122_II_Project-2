@@ -27,8 +27,8 @@
     #define CLINICIAN_FETCH                 'F'
     #define START_CYCLIC_VOLTAMMETRY        'G'
     #define RUN_AMPEROMETRY                 'H'
-    #define USER_START                      'I'
-    #define GUI_START                       'L'
+    #define FINISHED_CV                     'I'
+
     
 // API CONSTANTS
     #define true                             1
@@ -54,8 +54,8 @@
     uint8 Command_ready_Flag;
     uint8_t TIA_Calibration_ended_Flag;
     uint8_t CV_ready_Flag;
+    uint8_t CV_finished_flag;
     uint8_t AMP_ready_Flag;
-    uint8_t Load_EEPROM_Flag;
     uint8_t Update_scanrate_Flag;
     uint8_t Update_startvalue_Flag;
     uint8_t Update_endvalue_Flag;
@@ -109,11 +109,11 @@
 // GENERAL GLOBALS
     uint16 dac_ground_value;  // value to load in the DAc
     
-//  INTERRUPTS GLOBALS
-    
-float uA_CV_scan[MAX_CV_LUT_SIZE];
+//  INTERRUPTS GLOBALS    
 float uA_amp;
 float current_CV;
+float current_CV_old;
+float max_rel;
 float array_current_CV[10];
 float32 R_analog_route;
 float average_MA;

@@ -17,7 +17,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
-
 #include "EEPROM_Driver.h"
 
 /*------------------------------------------------------------------------
@@ -179,6 +178,9 @@ void save_current_measurement(uint8_t glucose_concentration) {
 void save_CV_result(){
     ErrorCode error;
     
+    len= snprintf(str, sizeof(str), "Potential max current in SAVE FUNCTION: %d\r\n", potential_max_current);
+    UART_DEBUG_PutString(str);    
+    
     error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x02, (potential_max_current >> 8));
     if(error == ERROR) {
         UART_DEBUG_PutString("\nError in saving CV_H result in EEPROM memory\r\n");
@@ -216,6 +218,10 @@ int16 get_CV_result() {
     
     data = data_L;
     data |= data_H << 8;
+    
+    len= snprintf(str, sizeof(str), "value taken from EEPROM: %u\r\n", data);
+    UART_DEBUG_PutString(str);
+    
     return data;    
 }
 

@@ -38,12 +38,14 @@ CY_ISR(dacInterrupt)
         helper_HardwareSleep();
         lut_index = 0; 
         
-        potential_max_current= helper_search_max(uA_CV_scan, lut_length); //we look at what has been saved in the uA_CV_scan and we search for the max current
 
         len= snprintf(str, sizeof(str), "Potential max current: %d\r\n", potential_max_current);
         UART_DEBUG_PutString(str);
         
         AMP_ready_Flag=true; //CV has ended and we have calculated a potential value to be applied for chronoamperometry
+        CV_ready_Flag=false;
+        CV_finished_flag=true;
+        lut_index = 0; 
     }
     
     lut_value = waveform_CV_lut[lut_index]; // take value from the CV look up table 
@@ -58,10 +60,19 @@ CY_ISR(dacInterrupt)
 // ISR used to verify the error between the potential of the working electrode and the VIRTUAL GROUND at 2.048 V
 CY_ISR(adcInterrupt){
    
+    current_CV_old=current_CV;
+    
     if(lut_index<=9){
         
         valore_adc_mv_CV = ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
         current_CV = (float)(-1)*(valore_adc_mv_CV)/20.0;
+        
+        if(current_CV>=current_CV_old && current_CV>=max_rel){
+         
+            max_rel=current_CV;
+            potential_max_current=lut_value;
+            
+        }
         
         //len= snprintf(str, sizeof(str), "adc_mv: %d    current_CV:%f\r\n", valore_adc_mv_CV, current_CV);
         //UART_DEBUG_PutString(str);
@@ -83,6 +94,13 @@ CY_ISR(adcInterrupt){
         
             valore_adc_mv_CV= ADC_SigDel_CountsTo_mVolts(ADC_SigDel_GetResult32());
             current_CV= (float)(-1)*(valore_adc_mv_CV)/20.0;
+            
+            if(current_CV>=current_CV_old && current_CV>=max_rel){
+             
+                max_rel=current_CV;
+                potential_max_current=lut_value;
+                
+            }
         
             for(int k=0; k<9; k++){
                 array_current_CV[k]=array_current_CV[k+1];
