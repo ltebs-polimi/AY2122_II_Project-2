@@ -141,9 +141,17 @@ CY_ISR(adcAmpInterrupt){
 
 CY_ISR(adcDacInterrupt){
     
+    lut_index_old=lut_index;
             
     DVDAC_SetValue(lut_value); // this function sets the DVDAC value     
     lut_index++;  
+    
+    if(lut_index_old!=lut_index){
+     
+        OLED_loading();
+        
+    }
+
     
     if (lut_index >= MAX_amp_LUT_SIZE) { // all the data points have been given
         
@@ -160,6 +168,7 @@ CY_ISR(adcDacInterrupt){
         // Set a flag to indicate that the amperometry has ended
         // Call a function to convert (based on a calibration curve) the current at a certain time instant into a glucose concentration
        
+        finished_chronoAmp=1;
     }
     lut_value = waveform_amp_lut[lut_index]; // take value from the AMP look up table
     
