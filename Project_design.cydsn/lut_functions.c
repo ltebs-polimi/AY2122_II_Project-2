@@ -75,13 +75,13 @@ uint16 LUT_MakeTriangle_Wave(uint16 start_value, uint16 end_value) {
 uint16 LUT_make_line(uint16 start, uint16 end, uint16 index) {
     
     if (start < end) {
-        for (uint16 value = start; value <= end; value++) {  //increasing part of the triangular wave
+        for (uint16 value = start; value <= end; value = value+2) {  //increasing part of the triangular wave
             waveform_CV_lut[index] = value;
             index ++;
         }
     }
     else {
-        for (uint16 value = start; value >= end; value--) { //decreasing part of the triangular wave
+        for (uint16 value = start; value >= end; value = value-2) { //decreasing part of the triangular wave
             waveform_CV_lut[index] = value;
             index ++;
         }
