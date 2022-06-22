@@ -79,7 +79,7 @@ int main(void)
     //Initialize Interrupt routines variables
     uA_amp = 0.0;
     current_CV = 0.0;
-    current_CV_old=0.0;
+    average_MA_old=0.0;
     average_MA=0.0;
     average_MA_first=0.0;
     potential_max_current=0;
@@ -88,6 +88,8 @@ int main(void)
     valore_adc_mv_CV=0;
     valore_adc_mv_AMP=0;
     max_rel=0.0;
+    slope_calibration=0.0102;
+    intercept_calibration=1.0670;
     
     //Initialize flags values
     Input_Flag=false;
@@ -101,6 +103,7 @@ int main(void)
     Update_endvalue_Flag=false;
     Update_timevalue_Flag=false;
     Button_Flag=true;
+    flag_GUI_running=false;
         
     I2CMASTER_Start();
     UART_DEBUG_Start();
@@ -340,6 +343,7 @@ int main(void)
                         rtx_drawBitmap(0, 0, GUI_activated, 128, 64, BLACK, WHITE);
                         display_update();
                         state=GUI;
+                        flag_GUI_running=true;
                         
                     }
                 }
@@ -584,6 +588,8 @@ int main(void)
                         }
 
                         break;
+                        
+                    
                         
                         
                         

@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QWidget,
+    
 )
 
 
@@ -65,6 +66,7 @@ UPDATE_TIME= "E"
 port_name_global = 0 
 current_CV = float(0.0)
 potential_CV = int(0)
+result= int(0)
 current_AMP= float(0.0)
 potential_AMP= int(0)
 stringa_prova=''
@@ -296,13 +298,16 @@ class UpdateGraphWorker(QRunnable):
         global PACKET_ARRIVED_AMP
         global potential_AMP
         global current_AMP
+        global result
         global stringa_prova_AMP
         global LIMIT_REACHED_AMP
         stringa_current_AMP=''
         stringa_potential_AMP=''
+        stringa_result=''
         B_index=0
         c_index=0
         z_index=0
+
 
         PACKET_ARRIVED_AMP= False
         READ_PACKET_DATA_AMP = False
@@ -335,7 +340,12 @@ class UpdateGraphWorker(QRunnable):
                 READ_PACKET_DATA_AMP = True
 
 
-            if PACKET_ARRIVED_AMP == True and stringa_prova_AMP=="FF":
+            if PACKET_ARRIVED_AMP == True and stringa_prova_AMP[len(stringa_prova_AMP)-1]=="F":
+                for i in range(1, len(stringa_prova_AMP)-1):
+                    stringa_result+=stringa_prova_AMP[i]
+                
+                result=int(stringa_result)
+
                 LIMIT_REACHED_AMP=True
                 READ_PACKET_DATA_AMP=False
 
@@ -810,7 +820,7 @@ class Ui_ClinicianWindow(object):
         self.Start_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.draw_AMP())
         self.Start_amp_button.setObjectName("Start_amp_button")
         self.gridLayout_7.addWidget(self.Start_amp_button, 3, 1, 1, 2)
-        self.Stop_amp_button = QtWidgets.QPushButton(self.tab_4, clicked=self.graphWidget_AMP.clear)
+        self.Stop_amp_button = QtWidgets.QPushButton(self.tab_4)
         self.Stop_amp_button.setObjectName("Stop_amp_button")
         self.gridLayout_7.addWidget(self.Stop_amp_button, 3, 4, 1, 1)
         self.Fetch_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.draw_fetch())
@@ -850,12 +860,13 @@ class Ui_ClinicianWindow(object):
         self.Value_data_label.setAlignment(QtCore.Qt.AlignCenter)
         self.Value_data_label.setObjectName("Value_data_label")
         self.gridLayout_5.addWidget(self.Value_data_label, 2, 1, 1, 1)
-        self.Start_data_button = QtWidgets.QPushButton(self.frame_2)
+        self.Start_data_button = QtWidgets.QPushButton(self.frame_2, clicked= lambda: self.show_result() )
         self.Start_data_button.setObjectName("Start_data_button")
         self.gridLayout_5.addWidget(self.Start_data_button, 0, 2, 1, 1)
         self.Glucose_data_label = QtWidgets.QLabel(self.frame_2)
         self.Glucose_data_label.setAlignment(QtCore.Qt.AlignCenter)
         self.Glucose_data_label.setObjectName("Glucose_data_label")
+        self.Glucose_data_label.setFont(QtGui.QFont('Arial', 20))
         self.gridLayout_5.addWidget(self.Glucose_data_label, 1, 1, 1, 1)
         self.gridLayout_5.setColumnStretch(0, 1)
         self.gridLayout_5.setColumnStretch(1, 2)
@@ -947,8 +958,8 @@ class Ui_ClinicianWindow(object):
         self.Fetch_amp_button.setText(_translate("ClinicianWindow", "FETCH FROM MEMORY"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), _translate("ClinicianWindow", "Chronoamperometry"))
         self.Value_data_label.setText(_translate("ClinicianWindow", "VALUE"))
-        self.Start_data_button.setText(_translate("ClinicianWindow", "START MEASUREMENT"))
-        self.Glucose_data_label.setText(_translate("ClinicianWindow", "GLUCOSE CONCENTRATION (mg/dL)"))
+        self.Start_data_button.setText(_translate("ClinicianWindow", "SHOW RESULT"))
+        self.Glucose_data_label.setText(_translate("ClinicianWindow", "GLUCOSE CONCENTRATION (mg/dL):"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("ClinicianWindow", "Data Visualization"))
         self.connect_to_COM()
 
@@ -1263,6 +1274,12 @@ class Ui_ClinicianWindow(object):
 
         # execute the worker
         self.threadpool.start(self.graph_worker)
+
+    def show_result(self):
+        
+        self.Value_data_label.setFont(QtGui.QFont('Arial', 80))
+        self.Value_data_label.setText(str(result));
+
 
 
     def draw_fetch(self):

@@ -62,6 +62,7 @@
     uint8_t Update_timevalue_Flag;
     uint8_t Button_Flag;
     uint8_t flag_first_chrono;
+    uint8_t flag_GUI_running;
     
 // MAIN GLOBALS
     char state;
@@ -112,7 +113,7 @@
 //  INTERRUPTS GLOBALS    
 float uA_amp;
 float current_CV;
-float current_CV_old;
+float average_MA_old;
 float max_rel;
 float array_current_CV[10];
 float32 R_analog_route;
@@ -123,6 +124,10 @@ int counter_amperometry;
 int first_time;
 int16 valore_adc_mv_CV;
 int16 valore_adc_mv_AMP;
+float slope_calibration;
+float intercept_calibration;
+int glucose_GUI;
+float uAMP_10;
         
         
     /* Make global variables needed for the DAC/ADC interrupt service routines */
