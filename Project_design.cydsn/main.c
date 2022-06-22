@@ -115,7 +115,7 @@ int main(void)
       Seconds, Minutes, Hours, Date, Month, Year
       Then run the program, re-comment the line and re-run the program
     */
-    //set_RTC(0x45,0x23,0x13,0x16,JUNE,Y_2022);
+    //set_RTC(0x30,0x51,0x09,0x22,JUNE,Y_2022);
     
     uint8_t glucose_concentration_from_memory = 0;
     char flag = 0;

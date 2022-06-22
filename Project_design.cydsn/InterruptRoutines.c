@@ -151,7 +151,14 @@ CY_ISR(adcDacInterrupt){
         OLED_loading();
         
     }
-
+    
+    if(lut_index == 100)
+    {
+        char chronoamp_content[64];
+        len = snprintf(chronoamp_content, sizeof(chronoamp_content), "Chronoamp current @10s: %.2f\r\n", uA_amp);
+        UART_DEBUG_PutString(chronoamp_content);
+    }
+        
     
     if (lut_index >= MAX_amp_LUT_SIZE) { // all the data points have been given
         
