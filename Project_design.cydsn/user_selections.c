@@ -148,7 +148,7 @@ void user_chrono_lut_maker(int16 potential_max) {
     
     PWM_isr_WritePeriod(PWM_PERIOD_10_ms*10);  //period of the PWM fixed at 10 ms for a chronoamperometry experiment
     PWM_isr_WriteCompare((PWM_PERIOD_10_ms*10)/2);
-    LUT_MakePulse(2048, potential_max); //it creates a look up table for chronoamperometry based on these values of baseline and pulse voltage
+    LUT_MakePulse(0, potential_max); //it creates a look up table for chronoamperometry based on these values of baseline and pulse voltage
     lut_value = waveform_amp_lut[0];  // setup the dac so when it starts it will be at the correct voltage
                 
     PWM_isr_Sleep();
