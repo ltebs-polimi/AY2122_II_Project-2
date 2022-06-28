@@ -132,9 +132,11 @@ CY_ISR(adcAmpInterrupt){
     uA_amp= (float)(-1)*(valore_adc_mv_AMP)/20.0;
     
     //send out values with the UART for the AMP graph
-    len= snprintf(str, sizeof(str), "B%.2fc%uz", uA_amp, lut_index*100);
-    UART_BLT_PutString(str);
-    UART_DEBUG_PutString(str);
+    if(flag_user_measurement==false){
+        len= snprintf(str, sizeof(str), "B%.2fc%.2fz", uA_amp, (float)(lut_index/10.0));
+        UART_BLT_PutString(str);
+        UART_DEBUG_PutString(str);
+    }
 }
 
 CY_ISR(adcDacInterrupt){

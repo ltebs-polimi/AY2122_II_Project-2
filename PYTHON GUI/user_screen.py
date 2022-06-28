@@ -4,6 +4,7 @@ import sys
 import time
 
 import logging
+from tkinter.font import BOLD
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import (
@@ -36,6 +37,10 @@ serial_ports_array = []
 
 # Globals
 CONN_STATUS = False
+FINISHED_AMP = False
+stringa_prova_AMP=''
+PACKET_ARRIVED_AMP = False
+result=int(0)
 
 # Logging config
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -165,6 +170,102 @@ class SerialWorker(QRunnable):
         logging.info("Killing the process")
 
 
+#########################
+# GRAPH_WORKER_SIGNALS #
+#########################
+class UpdateGraphSignals(QObject):
+    """!
+    @brief Class that defines the signals available to a UpdateGraphworker.
+
+    Available signals (with respective inputs) are:
+        - plot_values:
+            int --> x value
+            int --> y value
+    """
+    glucose_value = pyqtSignal(int)
+
+
+######################
+# UPDATE GRAPH WORKER#
+######################
+class UpdateGraphWorker(QRunnable):
+    """!
+    @brief Main class for serial communication: handles connection with device.
+    """
+    def __init__(self, port_name):
+        """!
+        @brief Init worker.
+        """
+        global GRAPH_STATUS
+        self.is_killed_graph = False
+
+        super().__init__()
+
+        self.port_graph = serial.Serial()
+        self.port_graph_name = port_name
+        self.baudrate_graph = 9600 # hard coded but can be a global variable, or an input param
+
+        self.port_graph = serial.Serial(port=self.port_graph_name, baudrate=self.baudrate_graph,
+                                write_timeout=0, timeout=2)  
+        
+
+        logging.info("in update graph worker init")
+
+        self.graph_signals = UpdateGraphSignals()
+
+
+    @pyqtSlot()
+    def run(self):
+        """!
+        @brief Estabilish connection with desired serial port.
+        """
+        global FINISHED_AMP
+
+        while FINISHED_AMP == False:
+
+            self.read_values()
+
+
+
+
+    @pyqtSlot()
+    def read_values(self):
+        
+        global FINISHED_AMP
+        global stringa_prova_AMP
+        global PACKET_ARRIVED_AMP
+        global result
+        stringa_result=''
+
+        if(self.port_graph.in_waiting>0):
+            stringa_prova_AMP += self.port_graph.read().decode('utf-8', errors='replace')
+            logging.info(stringa_prova_AMP)
+            PACKET_ARRIVED_AMP=True
+
+        if PACKET_ARRIVED_AMP == True and stringa_prova_AMP[len(stringa_prova_AMP)-1]=="F":
+            for i in range(1, len(stringa_prova_AMP)-1):
+                stringa_result+=stringa_prova_AMP[i]
+            
+            result=int(stringa_result)
+            self.graph_signals.glucose_value.emit(result)
+            FINISHED_AMP=True
+    
+
+    @pyqtSlot()
+    def killed_graph(self):
+        """!
+        @brief Close the serial port before closing the app.
+        """
+        global GRAPH_STATUS
+        if self.is_killed_graph:
+            self.port_graph.close()
+            time.sleep(0.01)
+            GRAPH_STATUS = False
+
+        logging.info("Killing the process")
+
+
+
 
 class Ui_UserWindow(object):
     def setupUi(self, UserWindow):
@@ -205,6 +306,7 @@ class Ui_UserWindow(object):
         self.Glucose_label = QtWidgets.QLabel(self.frame)
         self.Glucose_label.setAlignment(QtCore.Qt.AlignCenter)
         self.Glucose_label.setObjectName("Glucose_label")
+        self.Glucose_label.setFont(QtGui.QFont('Arial', 20))
         self.gridLayout.addWidget(self.Glucose_label, 0, 1, 1, 1)
         self.Value_label = QtWidgets.QLabel(self.frame)
         self.Value_label.setTextFormat(QtCore.Qt.AutoText)
@@ -297,6 +399,11 @@ class Ui_UserWindow(object):
             # execute the worker
             self.threadpool.start(self.serial_worker)
 
+    def show_result(self):
+        
+        self.Value_label.setFont(QtGui.QFont('Arial', 80))
+        self.Value_label.setText(str(result))
+
 
 
     ####################
@@ -321,6 +428,31 @@ class Ui_UserWindow(object):
     ##################
     # SERIAL SIGNALS #
     ##################
+
+    @pyqtSlot()
+    def Start_AMP(self):
+        """!
+        @brief Draw the plots.
+        """
+        global FINISHED_AMP
+
+        FINISHED_AMP= False
+
+        self.serial_worker.send('L')
+        time.sleep(0.1)
+        self.serial_worker.send('z')
+        time.sleep(0.1)
+
+        self.serial_worker.is_killed = True
+        self.serial_worker.killed()
+        time.sleep(0.5)
+
+        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
+        # connect worker signals to functions
+        self.graph_worker.graph_signals.glucose_value.connect(self.show_result)
+
+        # execute the worker
+        self.threadpool.start(self.graph_worker)
 
 
     @pyqtSlot(bool)

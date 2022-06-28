@@ -104,6 +104,7 @@ int main(void)
     Update_timevalue_Flag=false;
     Button_Flag=true;
     flag_GUI_running=false;
+    flag_user_measurement=false;
         
     I2CMASTER_Start();
     UART_DEBUG_Start();
@@ -344,6 +345,9 @@ int main(void)
                         display_update();
                         state=GUI;
                         flag_GUI_running=true;
+                        len= snprintf(str, sizeof(str), "comando ricevuto in case IDLE: %c\r\n", command[0]);
+                        UART_DEBUG_PutString(str); 
+                        
                         
                     }
                 }
@@ -403,6 +407,7 @@ int main(void)
 
             case GUI:
                 
+                
                 if (UART_BLT_GetRxBufferSize() > 0 && Command_ready_Flag==false) // Continuously check if something is received via UART
                 {
                     Input_Flag=true;
@@ -428,17 +433,23 @@ int main(void)
                     CV_finished_flag=false;
                     Command_ready_Flag=true;
                 }
+
                 
                 //Check if something has been received by the UART 
                 if (Command_ready_Flag == true && Button_Flag==true) {  
                     
                     //Switch case based on the first character that is received
                     switch (command[0]) { 
+                        
                     
                     case CONNECT_TO_COM_PORT: // 'A' Connect to the BT COM port
                         
+                        len= snprintf(str, sizeof(str), "comando ricevuto in case GUI: %c\r\n", command[0]);
+                        UART_DEBUG_PutString(str);
+                        
                         sprintf(DataBuffer, "Glucose $$$");
                         UART_BLT_PutString(DataBuffer);
+                        UART_DEBUG_PutString(DataBuffer);
 
                         break;
                    
@@ -589,6 +600,17 @@ int main(void)
 
                         break;
                         
+                    case USER_GUI_MEASUREMENT:
+                        
+                        flag_user_measurement=true;
+                        
+                        potential_max_current = get_CV_result();
+                        CyDelay(2000);
+                        user_chrono_lut_maker(potential_max_current);   // Create a look up table for chronoamperometry            
+                        user_run_amperometry();
+                        
+                       
+                        break;
                     
                         
                         

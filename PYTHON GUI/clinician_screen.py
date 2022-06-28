@@ -5,6 +5,7 @@ import time
 
 import logging
 from tkinter import FALSE
+from turtle import position, right, setpos
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import (
@@ -68,7 +69,7 @@ current_CV = float(0.0)
 potential_CV = int(0)
 result= int(0)
 current_AMP= float(0.0)
-potential_AMP= int(0)
+potential_AMP= float(0.0)
 stringa_prova=''
 stringa_prova_AMP=''
 
@@ -141,7 +142,7 @@ class SerialWorker(QRunnable):
                     self.send('A')
                     time.sleep(0.1)
                     self.send('z')
-                    time.sleep(0.1)
+                    time.sleep(1)
 
                     if (self.read() == "Glucose $$$"):
                         CONN_STATUS = True
@@ -222,7 +223,7 @@ class UpdateGraphSignals(QObject):
             int --> y value
     """
     plot_values_CV = pyqtSignal(int, float)
-    plot_values_AMP= pyqtSignal(int, float)
+    plot_values_AMP= pyqtSignal(float, float)
 
 
 
@@ -352,7 +353,7 @@ class UpdateGraphWorker(QRunnable):
 
             if(READ_PACKET_DATA_AMP == True):
                 current_AMP = float(stringa_current_AMP)
-                potential_AMP = int(stringa_potential_AMP)
+                potential_AMP = float(stringa_potential_AMP)
 
                 logging.info(current_AMP)
                 logging.info(potential_AMP)
@@ -431,6 +432,7 @@ class UpdateGraphWorker(QRunnable):
             if(READ_PACKET_DATA == True):
                 current_CV = float(stringa_current)
                 potential_CV = int(stringa_potential)
+                potential_CV=potential_CV-2000
 
                 logging.info(current_CV)
                 logging.info(potential_CV)
@@ -801,6 +803,8 @@ class Ui_ClinicianWindow(object):
         self.gridLayout_4.setColumnStretch(2, 5)
         self.gridLayout_4.setRowStretch(0, 20)
         self.tabWidget.addTab(self.tab_3, "")
+
+
         self.tab_4 = QtWidgets.QWidget()
         self.tab_4.setObjectName("tab_4")
         self.gridLayout_6 = QtWidgets.QGridLayout(self.tab_4)
@@ -842,6 +846,7 @@ class Ui_ClinicianWindow(object):
         self.gridLayout_7.setRowStretch(1, 1)
         self.gridLayout_6.addLayout(self.gridLayout_7, 1, 0, 1, 1)
         self.tabWidget.addTab(self.tab_4, "")
+
         self.tab_5 = QtWidgets.QWidget()
         self.tab_5.setObjectName("tab_5")
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.tab_5)
@@ -883,6 +888,49 @@ class Ui_ClinicianWindow(object):
         self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
         ClinicianWindow.setCentralWidget(self.centralwidget)
 
+       
+        self.tab_6 = QtWidgets.QWidget()
+        self.tab_6.setObjectName("tab_6")
+        self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.tab_6)
+        self.verticalLayout_4.setObjectName("verticalLayout_4")
+        self.frame_3 = QtWidgets.QFrame(self.tab_6)
+        self.frame_3.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.frame_3.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.frame_3.setObjectName("frame_3")
+        self.gridLayout_12 = QtWidgets.QGridLayout(self.frame_3)
+        self.gridLayout_12.setObjectName("gridLayout_12")
+        self.gridLayout_13 = QtWidgets.QGridLayout()
+        self.gridLayout_13.setObjectName("gridLayout_13")
+        spacerItem15 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.gridLayout_13.addItem(spacerItem15, 0, 0, 1, 1)
+        self.History_label = QtWidgets.QLabel(self.frame_3)
+        self.History_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.History_label.setObjectName("History_label")
+        self.gridLayout_13.addWidget(self.History_label, 2, 1, 1, 1)
+        self.Show_data_button = QtWidgets.QPushButton(self.frame_3)
+        self.Show_data_button.setObjectName("Show_data_button")
+        self.gridLayout_13.addWidget(self.Show_data_button, 0, 2, 1, 1)
+        self.History_title_label = QtWidgets.QLabel(self.frame_3)
+        self.History_title_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.History_title_label.setObjectName("History_title_label")
+        self.History_title_label.setFont(QtGui.QFont('Arial', 20))
+        self.gridLayout_13.addWidget(self.History_title_label, 1, 1, 1, 1)
+        self.gridLayout_13.setColumnStretch(0, 1)
+        self.gridLayout_13.setColumnStretch(1, 2)
+        self.gridLayout_13.setColumnStretch(2, 1)
+        self.gridLayout_13.setRowStretch(0, 1)
+        self.gridLayout_13.setRowStretch(1, 1)
+        self.gridLayout_13.setRowStretch(2, 1)
+        self.gridLayout_12.addLayout(self.gridLayout_13, 0, 1, 1, 1)
+        self.verticalLayout_4.addWidget(self.frame_3)
+        self.tabWidget.addTab(self.tab_6, "")
+        self.gridLayout_2.addWidget(self.tabWidget, 0, 0, 1, 1)
+        self.gridLayout_2.setRowStretch(0, 8)
+        self.gridLayout_3.addLayout(self.gridLayout_2, 0, 0, 1, 1)
+        self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
+        ClinicianWindow.setCentralWidget(self.centralwidget)
+        
+
         # Plot settings
             # Add grid
         self.graphWidget_CV.showGrid(x=True, y=True)
@@ -899,7 +947,7 @@ class Ui_ClinicianWindow(object):
         self.graphWidget_CV.setLabel('bottom', 'Potential [mV]', **styles)
 
         self.graphWidget_AMP.setLabel('left', 'Current [uA]', **styles)
-        self.graphWidget_AMP.setLabel('bottom', 'Time [ms]', **styles)
+        self.graphWidget_AMP.setLabel('bottom', 'Time [sec]', **styles)
             # Add legend
         self.graphWidget_CV.addLegend()
         self.graphWidget_AMP.addLegend()
@@ -961,6 +1009,10 @@ class Ui_ClinicianWindow(object):
         self.Start_data_button.setText(_translate("ClinicianWindow", "SHOW RESULT"))
         self.Glucose_data_label.setText(_translate("ClinicianWindow", "GLUCOSE CONCENTRATION (mg/dL):"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("ClinicianWindow", "Data Visualization"))
+        self.History_title_label.setText(_translate("ClinicianWindow", "MEASUREMENTS HISTORY:"))
+        self.Show_data_button.setText(_translate("ClinicianWindow", "SHOW HISTORY"))
+        self.History_label.setText(_translate("ClinicianWindow", "HISTORY"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), _translate("ClinicianWindow", "History"))
         self.connect_to_COM()
 
 
@@ -981,7 +1033,6 @@ class Ui_ClinicianWindow(object):
             # execute the worker
             self.threadpool.start(self.serial_worker)
             
-
 
 
     def update_plot_data(self, potential_CV, current_CV):
@@ -1117,6 +1168,7 @@ class Ui_ClinicianWindow(object):
             
             logging.info("Received: {}".format(self.Initial_CV_textEdit.toPlainText()))
             initial_value = int(self.Initial_CV_textEdit.toPlainText())
+            initial_value=initial_value+2000
 
             b=int(initial_value>>8)
             c=int(initial_value & (0xFF))
@@ -1129,6 +1181,7 @@ class Ui_ClinicianWindow(object):
             logging.info("Received: {}".format(self.Final_CV_textEdit.toPlainText()))
 
             final_value = int(self.Final_CV_textEdit.toPlainText())
+            final_value=final_value+2000
            
             b=int(final_value>>8)
             c=int(final_value & (0xFF))
@@ -1226,7 +1279,7 @@ class Ui_ClinicianWindow(object):
         self.serial_worker.send('z')
         time.sleep(0.1)
  
-        self.CV_line = self.plot(self.graphWidget_CV, self.x, self.y, 'CV','r')
+        self.CV_line = self.plot(self.graphWidget_CV, self.x, self.y,'r')
 
         self.serial_worker.is_killed = True
         self.serial_worker.killed()
@@ -1259,7 +1312,7 @@ class Ui_ClinicianWindow(object):
         time.sleep(0.1)
 
 
-        self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP, 'AMP','r')
+        self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP,'r')
         
         self.graph_worker.is_killed_graph = True
         self.graph_worker.killed_graph()
@@ -1278,7 +1331,7 @@ class Ui_ClinicianWindow(object):
     def show_result(self):
         
         self.Value_data_label.setFont(QtGui.QFont('Arial', 80))
-        self.Value_data_label.setText(str(result));
+        self.Value_data_label.setText(str(result))
 
 
 
@@ -1295,7 +1348,7 @@ class Ui_ClinicianWindow(object):
         self.serial_worker.send('z')
         time.sleep(0.1)
  
-        self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP, 'AMP','r')
+        self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP,'r')
 
         self.serial_worker.is_killed = True
         self.serial_worker.killed()
@@ -1314,12 +1367,12 @@ class Ui_ClinicianWindow(object):
 
 
     @pyqtSlot()
-    def plot(self, graph, x, y, curve_name, color):  #method called by the draw method
+    def plot(self, graph, x, y, color):  #method called by the draw method
         """!
         @brief Draw graph.
         """
         pen = pg.mkPen(color=color)
-        line = graph.plot(x, y, name=curve_name, pen=pen)
+        line = graph.plot(x, y, pen=pen)
         return line
 
 #############
