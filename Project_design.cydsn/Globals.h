@@ -28,6 +28,7 @@
     #define START_CYCLIC_VOLTAMMETRY        'G'
     #define RUN_AMPEROMETRY                 'H'
     #define FINISHED_CV                     'I'
+    #define USER_GUI_MEASUREMENT            'L'
 
     
 // API CONSTANTS
@@ -63,6 +64,7 @@
     uint8_t Button_Flag;
     uint8_t flag_first_chrono;
     uint8_t flag_GUI_running;
+    uint8_t flag_user_measurement;
     
 // MAIN GLOBALS
     char state;
