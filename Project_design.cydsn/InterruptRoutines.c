@@ -183,7 +183,7 @@ CY_ISR(adcDacInterrupt){
             
         }else{
             
-            glucose_GUI=(int)((uAMP_10-intercept_calibration)/slope_calibration);
+            glucose_concentration=(int)((uAMP_10-intercept_calibration)/slope_calibration);
             
         }
         

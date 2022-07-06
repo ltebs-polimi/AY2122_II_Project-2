@@ -114,12 +114,19 @@ int main(void)
     display_init(DISPLAY_ADDRESS);
     rtc_init(RTC_ADDRESS);
     eeprom_current_address = 0x0006;
+        
+    int len = 0;
     
     /*If you want to setup the RTC, uncomment the following line and insert the needed informations, in order.
       Seconds, Minutes, Hours, Date, Month, Year
       Then run the program, re-comment the line and re-run the program
     */
-    //set_RTC(0x30,0x51,0x09,0x22,JUNE,Y_2022);
+    //set_RTC(0x40,0x32,0x09,0x06,JULY,Y_2022);
+    
+    rtc_read_time(RTC_ADDRESS);
+    len = snprintf(rtc_content, sizeof(rtc_content), "%d-%d-%d %02d:%02d\n", current_date, 
+               current_month, current_year, current_hours, current_minutes);
+    UART_DEBUG_PutString(rtc_content);
     
     uint8_t glucose_concentration_from_memory = 0;
     char flag = 0;
@@ -190,8 +197,6 @@ int main(void)
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
     };
-    
-    int len = 0;
     
     uint32_t rval;
     char message[100] = {'\0'};
