@@ -1,3 +1,5 @@
+### IMPORT SOME USEFUL LIBRARIES ###
+
 from pickle import TRUE
 import sys
 
@@ -6,8 +8,8 @@ import time
 import logging
 from tkinter import FALSE
 from turtle import position, right, setpos
-
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 from PyQt5.QtCore import (
     QObject,
     QThreadPool, 
@@ -26,22 +28,16 @@ from PyQt5.QtWidgets import (
     
 )
 
-
-
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
-
 import serial
 import serial.tools.list_ports
 
-# We import library dedicated to data plot
 import pyqtgraph as pg
 from pyqtgraph import PlotWidget, plot
 import pyqtgraph as pg
 import os
 from random import randint
 
-# Globals
+### GLOBAL VARIABLES DEFINITION ###
 CONN_STATUS = False
 GRAPH_STATUS = False
 UPDATE_SCAN_FLAG=False 
@@ -65,8 +61,6 @@ UPDATE_INITIAL = "C"
 UPDATE_FINAL= "D"
 UPDATE_TIME= "E"
 
-counter=0
-
 port_name_global = 0 
 current_CV = float(0.0)
 potential_CV = int(0)
@@ -78,10 +72,8 @@ stringa_prova_AMP=''
 stringa_prova_history=''
 history_line=''
 received_character=False
-
 index_Z=[]
 
-# Global variables
 final_value=int()
 initial_value=int()
 time_value=int()
@@ -89,7 +81,7 @@ scan_rate=int()
 
 serial_ports_array = []
 
-# Logging config
+### LOGGING CONFIGURATION ###
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 
@@ -145,12 +137,14 @@ class SerialWorker(QRunnable):
                                         write_timeout=0, timeout=2)    
 
                 if self.port.is_open:
-
+                    
+                    # Send a command to the psoc
                     self.send('A')
                     time.sleep(0.1)
                     self.send('z')
                     time.sleep(1)
 
+                    # If a specific string is received, connect to that specific COM port
                     if (self.read() == "Glucose $$$"):
                         CONN_STATUS = True
                         self.signals.status.emit(self.port_name, 1)
@@ -225,9 +219,17 @@ class UpdateGraphSignals(QObject):
     @brief Class that defines the signals available to a UpdateGraphworker.
 
     Available signals (with respective inputs) are:
-        - plot_values:
+        - plot_values_CV:
             int --> x value
             int --> y value
+        - plot_values_AMP:
+            int --> x value
+            int --> y value
+        - history:
+            int --> number of measurements
+            str --> first measurement to print
+            str --> second measurement to print
+            str --> third measurement to print
     """
     plot_values_CV = pyqtSignal(int, float)
     plot_values_AMP= pyqtSignal(float, float)
@@ -256,10 +258,8 @@ class UpdateGraphWorker(QRunnable):
         self.port_graph = serial.Serial(port=self.port_graph_name, baudrate=self.baudrate_graph,
                                 write_timeout=0, timeout=2)  
         
+        # Variable used to highlight that we have started the graph worker
         GRAPH_STATUS=True
-
-
-        logging.info("in update graph worker init")
 
         self.graph_signals = UpdateGraphSignals()
 
@@ -268,7 +268,10 @@ class UpdateGraphWorker(QRunnable):
     @pyqtSlot()
     def run(self):
         """!
-        @brief Estabilish connection with desired serial port.
+        @brief Deal with 3 possible situations:
+        - update CV plot
+        - update AMP plot
+        - receive measurements history
         """
 
         global FINISHED_CV_GRAPH
@@ -281,23 +284,22 @@ class UpdateGraphWorker(QRunnable):
         global final_value
         global READ_PACKET_DATA
      
-        
+        # If CV data are expected
         if RECEIVE_CV_DATA:
             
             while FINISHED_CV_GRAPH == False:
 
                 self.read_CV_plot()
 
-
+        # If AMP data are expected
         if RECEIVE_AMP_DATA:
 
             while FINISHED_AMP_GRAPH == False:
 
                 self.read_AMP_plot()
 
+        # If HISTORY data are expected
         if RECEIVE_HISTORY:
-            
-            logging.info("receive history")
 
             while FINISHED_HISTORY==False:
                 
@@ -307,6 +309,10 @@ class UpdateGraphWorker(QRunnable):
     
     @pyqtSlot()
     def read_AMP_plot(self):
+        """!
+        @brief Basic function for displaying a chronoamperometry graph.
+        """
+
         global FINISHED_AMP_GRAPH
         global RECEIVE_AMP_DATA
         global READ_PACKET_DATA_AMP
@@ -330,13 +336,17 @@ class UpdateGraphWorker(QRunnable):
 
         if RECEIVE_AMP_DATA:
 
+            # Check if some data can be read from the buffer
             if(self.port_graph.in_waiting>0):
                 stringa_prova_AMP += self.port_graph.read().decode('utf-8', errors='replace')
                 logging.info(stringa_prova_AMP)
                 PACKET_ARRIVED_AMP=True
 
+            # Check whether the expected packet has been received or not: "B" is the first character of a packet, "z" is the last one
             if (PACKET_ARRIVED_AMP == True and stringa_prova_AMP[0] == 'B' and stringa_prova_AMP[len(stringa_prova_AMP)-1] == 'z'):
-                logging.info("packet_arrived_AMP")              
+                logging.info("packet_arrived_AMP")       
+                
+                # Search for some reference characters within the packet        
                 for i in range(len(stringa_prova_AMP)):
                     if(stringa_prova_AMP[i])=='B':
                         B_index=i
@@ -354,18 +364,24 @@ class UpdateGraphWorker(QRunnable):
                 PACKET_ARRIVED_AMP = False
                 READ_PACKET_DATA_AMP = True
 
-
+            # Check if all data have been received (F is the last character sent from the PSOC)
             if PACKET_ARRIVED_AMP == True and stringa_prova_AMP[len(stringa_prova_AMP)-1]=="F":
+                
+                # The last packet contains the result in terms of glucose concentration
                 for i in range(1, len(stringa_prova_AMP)-1):
                     stringa_result+=stringa_prova_AMP[i]
                 
+                # The result is stored in a global variable
                 result=int(stringa_result)
 
+                # Highlight that the limit has been reached
                 LIMIT_REACHED_AMP=True
                 READ_PACKET_DATA_AMP=False
 
-
+            # If a complete packet has been received
             if(READ_PACKET_DATA_AMP == True):
+
+                # The values for the plot are stored in 2 variables
                 current_AMP = float(stringa_current_AMP)
                 potential_AMP = float(stringa_potential_AMP)
 
@@ -374,8 +390,10 @@ class UpdateGraphWorker(QRunnable):
 
                 READ_PACKET_DATA_AMP= False
 
+                # Emit a signal to update the plot
                 self.graph_signals.plot_values_AMP.emit(potential_AMP, current_AMP) 
 
+                # Reset everything before a new packet arrives
                 stringa_prova_AMP=''
                 stringa_current_AMP=''
                 stringa_potential_AMP=''
@@ -385,16 +403,15 @@ class UpdateGraphWorker(QRunnable):
 
                 self.port_graph.reset_input_buffer()
 
-
+            # Stop the graph
             if(LIMIT_REACHED_AMP):
                 FINISHED_AMP_GRAPH = True
-
 
 
     @pyqtSlot()
     def read_CV_plot(self):
         """!
-        @brief Basic function to send a single char on serial port.
+        @brief Basic function for displaying a cyclic voltammetry graph.
         """
         global FINISHED_CV_GRAPH
         global RECEIVE_CV_DATA
@@ -418,11 +435,13 @@ class UpdateGraphWorker(QRunnable):
 
         if RECEIVE_CV_DATA:
 
+            # Check if some data can be read from the buffer
             if(self.port_graph.in_waiting>0):
                 stringa_prova += self.port_graph.read().decode('utf-8', errors='replace')
                 logging.info(stringa_prova)
                 PACKET_ARRIVED=True
 
+            # Check whether the expected packet has been received or not: "A" is the first character of a packet, "z" is the last one
             if PACKET_ARRIVED == True and stringa_prova[0] == 'A' and stringa_prova[len(stringa_prova)-1] == 'z':
                 logging.info("packet_arrived")              
                 for i in range(len(stringa_prova)):
@@ -443,8 +462,10 @@ class UpdateGraphWorker(QRunnable):
                 PACKET_ARRIVED = False
                 READ_PACKET_DATA = True
 
-
+            # If a complete packet has been received
             if(READ_PACKET_DATA == True):
+
+                # The values for the plot are stored in 2 variables
                 current_CV = float(stringa_current)
                 potential_CV = int(stringa_potential)
                 potential_CV=potential_CV-2000
@@ -452,6 +473,7 @@ class UpdateGraphWorker(QRunnable):
                 logging.info(current_CV)
                 logging.info(potential_CV)
 
+                # Reset everything before a new packet arrives
                 READ_PACKET_DATA= False
 
                 self.graph_signals.plot_values_CV.emit(potential_CV, current_CV) 
@@ -465,20 +487,21 @@ class UpdateGraphWorker(QRunnable):
 
                 self.port_graph.reset_input_buffer()
 
-
+            # Check if the max potential value for the CV has been applied 
             if(potential_CV == final_value):
                 LIMIT_REACHED = True
 
+            # Stop the graph
             if(potential_CV == initial_value and LIMIT_REACHED):
                 FINISHED_CV_GRAPH = True
                 
-        counter=counter+1
 
     @pyqtSlot()
     def read_history(self):
         """!
-        @brief Basic function to send a single char on serial port.
+        @brief Basic function for displaying measurements history.
         """
+
         global stringa_prova_history
         global index_Z
         global stringa_history_1
@@ -490,53 +513,44 @@ class UpdateGraphWorker(QRunnable):
         received_character=False
 
 
-        logging.info("in read history function") 
-
         if RECEIVE_HISTORY:
 
-            logging.info("in receive history if")  
-
+            # Check if some data can be read from the buffer
             if(self.port_graph.in_waiting>0):
                 stringa_prova_history += self.port_graph.read().decode('utf-8', errors='replace')
                 logging.info(stringa_prova_history)
                 received_character=True
 
 
+            # Check whether all the measurements have been received or not: "F" is the last character 
             if(received_character==True and stringa_prova_history[len(stringa_prova_history)-1]=='F'):
 
+                # Search for the separating characters between the different measurements
                 for i in range(len(stringa_prova_history)):
                     if(stringa_prova_history[i]=='Z'):
                         index_Z.append(i)
                 
-                logging.info(index_Z)
-
+                # Only one measurement is available
                 if(len(index_Z)==1):
                     stringa_history_1=stringa_prova_history[0:index_Z[0]]
                     stringa_history_2=""
                     stringa_history_3=""
                     self.graph_signals.history.emit(len(index_Z),stringa_history_1, stringa_history_2, stringa_history_3)
 
+                # Two measurements are available
                 if(len(index_Z)==2):
                     stringa_history_1=stringa_prova_history[0:index_Z[0]]
                     stringa_history_2=stringa_prova_history[index_Z[0]+1:index_Z[1]]
                     stringa_history_3=""
                     self.graph_signals.history.emit(len(index_Z),stringa_history_1, stringa_history_2, stringa_history_3)
 
+                # In case 3 or more measurments are available, display just the last 3 measurements
                 if(len(index_Z)>=3):
                     stringa_history_1=stringa_prova_history[0:index_Z[0]]
                     stringa_history_2=stringa_prova_history[index_Z[0]+1:index_Z[1]]
                     stringa_history_3=stringa_prova_history[index_Z[1]+1:index_Z[2]]
                     self.graph_signals.history.emit(len(index_Z),stringa_history_1, stringa_history_2, stringa_history_3)
 
-                #if(len(index_Z)>3):
-                #    stringa_history_1=stringa_prova_history[index_Z[len(index_Z)-4]+1:index_Z[len(index_Z)-3]]
-                #    stringa_history_2=stringa_prova_history[index_Z[len(index_Z)-3]+1:index_Z[len(index_Z)-2]]
-                #    stringa_history_3=stringa_prova_history[index_Z[len(index_Z)-2]+1:index_Z[len(index_Z)-1]]
-                #    self.graph_signals.history.emit(len(index_Z),stringa_history_1, stringa_history_2, stringa_history_3)
-
-                    logging.info(stringa_history_1)
-                    logging.info(stringa_history_2)                    
-                    logging.info(stringa_history_3)
 
                 FINISHED_HISTORY=True
 
@@ -567,26 +581,25 @@ class UpdateGraphWorker(QRunnable):
         logging.info("Killing the process")
 
 
+### MAIN WINDOW CLASS ###
 class Ui_ClinicianWindow(object):
+
     def setupUi(self, ClinicianWindow):
 
+        # Instantiate the workers
         self.serial_worker = SerialWorker(None)
         self.upgrade_graph_worker = UpdateGraphWorker(None)
 
         # create thread handler
         self.threadpool = QThreadPool()
-
         self.connected = CONN_STATUS
-
         self.CHECK_TOGGLE= bool(True)
 
-        # Some random data
+        # Create void arrays for the plots
         self.x = [] 
         self.y = []
         self.x_AMP = []  
         self.y_AMP = [] 
-
-
 
         ClinicianWindow.setObjectName("ClinicianWindow")
         ClinicianWindow.resize(1064, 735)
@@ -812,14 +825,8 @@ class Ui_ClinicianWindow(object):
         self.gridLayout_4.addLayout(self.gridLayout_9, 0, 2, 2, 1)
         self.gridLayout_10 = QtWidgets.QGridLayout()
         self.gridLayout_10.setObjectName("gridLayout_10")
-
-        # self.CV_graphicsView = QtWidgets.QGraphicsView(self.tab_3)
-        # self.CV_graphicsView.setObjectName("CV_graphicsView")
-
         self.graphWidget_CV = PlotWidget(self.tab_3)
         self.graphWidget_CV.setObjectName("graphicsView")
-
-
         self.gridLayout_10.addWidget(self.graphWidget_CV, 3, 0, 1, 3)
         spacerItem4 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.gridLayout_10.addItem(spacerItem4, 4, 0, 1, 1)
@@ -886,8 +893,6 @@ class Ui_ClinicianWindow(object):
         self.gridLayout_4.setColumnStretch(2, 5)
         self.gridLayout_4.setRowStretch(0, 20)
         self.tabWidget.addTab(self.tab_3, "")
-
-
         self.tab_4 = QtWidgets.QWidget()
         self.tab_4.setObjectName("tab_4")
         self.gridLayout_6 = QtWidgets.QGridLayout(self.tab_4)
@@ -907,18 +912,14 @@ class Ui_ClinicianWindow(object):
         self.Start_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.draw_AMP())
         self.Start_amp_button.setObjectName("Start_amp_button")
         self.gridLayout_7.addWidget(self.Start_amp_button, 3, 1, 1, 2)
-        self.Stop_amp_button = QtWidgets.QPushButton(self.tab_4)
+        self.graphWidget_AMP = PlotWidget(self.tab_4)
+        self.graphWidget_AMP.setObjectName("Amp_graphicsView")
+        self.Stop_amp_button = QtWidgets.QPushButton(self.tab_4, clicked=self.graphWidget_AMP.clear)
         self.Stop_amp_button.setObjectName("Stop_amp_button")
         self.gridLayout_7.addWidget(self.Stop_amp_button, 3, 4, 1, 1)
         self.Fetch_amp_button = QtWidgets.QPushButton(self.tab_4, clicked= lambda: self.draw_fetch())
         self.Fetch_amp_button.setObjectName("Fetch_amp_button")
         self.gridLayout_7.addWidget(self.Fetch_amp_button, 0, 5, 1, 1)
-
-
-        self.graphWidget_AMP = PlotWidget(self.tab_4)
-        self.graphWidget_AMP.setObjectName("Amp_graphicsView")
-
-
         self.gridLayout_7.addWidget(self.graphWidget_AMP, 1, 0, 1, 6)
         self.gridLayout_7.setColumnStretch(0, 1)
         self.gridLayout_7.setColumnStretch(1, 1)
@@ -929,7 +930,6 @@ class Ui_ClinicianWindow(object):
         self.gridLayout_7.setRowStretch(1, 1)
         self.gridLayout_6.addLayout(self.gridLayout_7, 1, 0, 1, 1)
         self.tabWidget.addTab(self.tab_4, "")
-
         self.tab_5 = QtWidgets.QWidget()
         self.tab_5.setObjectName("tab_5")
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.tab_5)
@@ -970,8 +970,6 @@ class Ui_ClinicianWindow(object):
         self.gridLayout_3.addLayout(self.gridLayout_2, 0, 0, 1, 1)
         self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
         ClinicianWindow.setCentralWidget(self.centralwidget)
-
-       
         self.tab_6 = QtWidgets.QWidget()
         self.tab_6.setObjectName("tab_6")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.tab_6)
@@ -1014,34 +1012,37 @@ class Ui_ClinicianWindow(object):
         ClinicianWindow.setCentralWidget(self.centralwidget)
         
 
-        # Plot settings
-            # Add grid
+        ### PLOT SETTINGS ###
+        # Add grid
         self.graphWidget_CV.showGrid(x=True, y=True)
         self.graphWidget_AMP.showGrid(x=True, y=True)
-            # Set background color
+
+        # Set background color
         self.graphWidget_CV.setBackground('w')
         self.graphWidget_AMP.setBackground('w')
-            # Add title
+
+        # Add title
         self.graphWidget_CV.setTitle("CV scan")
         self.graphWidget_AMP.setTitle("Amperometry scan")
-            # Add axis labels
+
+        # Add axis labels
         styles = {'color':'k', 'font-size':'15px'}
         self.graphWidget_CV.setLabel('left', 'Current [uA]', **styles)
         self.graphWidget_CV.setLabel('bottom', 'Potential [mV]', **styles)
-
         self.graphWidget_AMP.setLabel('left', 'Current [uA]', **styles)
         self.graphWidget_AMP.setLabel('bottom', 'Time [sec]', **styles)
-            # Add legend
+
+        # Add legend
         self.graphWidget_CV.addLegend()
         self.graphWidget_AMP.addLegend()
 
-
         # Connect update buttons
-        self.Scan_update_button.clicked.connect(lambda state, x=UPDATE_SCAN: self.update_values_CV(state, x))
-        self.Initial_update_button.clicked.connect(lambda state, x=UPDATE_INITIAL: self.update_values_CV(state, x))
-        self.Final_update_button.clicked.connect(lambda state, x=UPDATE_FINAL: self.update_values_CV(state, x))
-        self.Time_update_button.clicked.connect(lambda state, x=UPDATE_TIME: self.update_values_CV(state, x))
+        self.Scan_update_button.clicked.connect(lambda x=UPDATE_SCAN: self.update_values_CV(x))
+        self.Initial_update_button.clicked.connect(lambda x=UPDATE_INITIAL: self.update_values_CV(x))
+        self.Final_update_button.clicked.connect(lambda x=UPDATE_FINAL: self.update_values_CV(x))
+        self.Time_update_button.clicked.connect(lambda x=UPDATE_TIME: self.update_values_CV(x))
 
+        # Initially disable all update buttons
         self.Initial_update_button.setDisabled(False)
         self.Final_update_button.setDisabled(False)           
         self.Scan_update_button.setDisabled(False)            
@@ -1064,7 +1065,6 @@ class Ui_ClinicianWindow(object):
         ClinicianWindow.setTabOrder(self.Scan_update_button, self.graphWidget_AMP)
         ClinicianWindow.setTabOrder(self.graphWidget_AMP, self.Start_amp_button)
         ClinicianWindow.setTabOrder(self.Start_amp_button, self.Draw_CV_button)
-
 
 
     def retranslateUi(self, ClinicianWindow):
@@ -1100,13 +1100,22 @@ class Ui_ClinicianWindow(object):
 
 
 
-    def connect_to_COM(self):
+#######################
+# METHODS_DEFINITIONS #
+#######################
 
-        #scan continuously the serial port
+
+    ### CONNECT TO COM PORT METHOD ###
+    def connect_to_COM(self):
+        """!
+        @brief Estabilish connection with the bluetooth COM port.
+        """
+
+        # Search for all the available serial ports
         serial_ports_array = self.serialscan()
 
+        # Try to connect to the available serial ports
         i=0
-
         for i in range(len(serial_ports_array)):
             # setup reading worker
             self.serial_worker = SerialWorker(serial_ports_array[i]) # needs to be re defined
@@ -1118,27 +1127,39 @@ class Ui_ClinicianWindow(object):
             
 
 
+
+    ### UPDATE CV GRAPH METHOD ###
     def update_plot_data(self, potential_CV, current_CV):
+        """!
+        @brief Function called when it is needed to update the CV plot
+        """
+        # Append latest values to x and y arrays
+        self.x.append(potential_CV) 
+        self.y.append(current_CV) 
+
+        # Update the data
+        self.CV_line.setData(self.x, self.y)  
 
 
-        self.x.append(potential_CV)  # Add a new value 1 higher than the last.
 
-        self.y.append(current_CV)  # Add a new random value.
-
-        self.CV_line.setData(self.x, self.y)  # Update the data.
-
-
+    ### UPDATE AMP GRAPH METHOD ###
     def update_plot_data_AMP(self, potential_AMP, current_AMP):
+        """!
+        @brief Function called when it is needed to update the AMP plot
+        """
+        # Append latest values to x and y arrays
+        self.x_AMP.append(potential_AMP) 
+        self.y_AMP.append(current_AMP) 
 
-
-        self.x_AMP.append(potential_AMP)  # Add a new value 1 higher than the last.
-
-        self.y_AMP.append(current_AMP)  # Add a new random value.
-
+        # Update the data
         self.AMP_line.setData(self.x_AMP, self.y_AMP)  # Update the data.
 
 
+    ### DISPLAY HISTORY METHOD ###
     def display_history_data(self, number_history, stringa_1, stringa_2, stringa_3):
+        """!
+        @brief Function called when history has to be displayed
+        """
         global history_line
 
         self.History_label.setFont(QtGui.QFont('Arial', 25))
@@ -1160,16 +1181,14 @@ class Ui_ClinicianWindow(object):
             history_line+=stringa_3
             self.History_label.setText(history_line)
 
-    ####################
-    # SERIAL INTERFACE #
-    ####################
+
+
+    ### SERIAL SCAN METHOD ###
     def serialscan(self):
         """!
         @brief Scans all serial ports and create a list.
         """
-
         self.port_text = ""
-
 
         # acquire list of serial ports 
         serial_ports = [
@@ -1181,10 +1200,8 @@ class Ui_ClinicianWindow(object):
 
 
 
-    ##################
-    # SERIAL SIGNALS #
-    ##################
 
+    ### CONNECTION/DISCONNECTION METHOD ###
     @pyqtSlot(bool)
     def on_toggle(self, checked):
         """!
@@ -1232,13 +1249,14 @@ class Ui_ClinicianWindow(object):
 
             self.CHECK_TOGGLE = bool(True)
 
-    @pyqtSlot()
-    def update_values_CV(self, state, char):
-        """!
-        @brief Handle the ON/OFF status of the PSoC LED.
 
-        @param state is the state of the button
-        @param char is the char to be sent on serial port
+
+
+    ### UPDATE CV PARAMETERS FOR THE PLOT ###
+    @pyqtSlot()
+    def update_values_CV(self, char):
+        """!
+        @brief Function to update the CV plot parameters
         """
         global final_value
         global initial_value
@@ -1252,14 +1270,18 @@ class Ui_ClinicianWindow(object):
         global UPDATE_TIME_FLAG
         global UPDATE_SCAN_FLAG
 
-
+        # Send a char to the psoc corresponding to the parameter of interest
         self.serial_worker.send(char)
         time.sleep(0.1)
 
+        # If the scan rate has been updated
         if (char == UPDATE_SCAN):
             logging.info("Received: {}".format(self.Scan_CV_textEdit.toPlainText()))
+
+            # Read what has been written 
             scan_rate = int(self.Scan_CV_textEdit.toPlainText())
 
+            # Send to the psoc the value
             b=int(scan_rate>>8)
             c=int(scan_rate & (0xFF))
             self.serial_worker.port.write([b])
@@ -1269,12 +1291,15 @@ class Ui_ClinicianWindow(object):
 
             UPDATE_SCAN_FLAG=True
 
+        # If the initial value has been updated
         elif (char == UPDATE_INITIAL):
-            
+
+            # Read what has been written            
             logging.info("Received: {}".format(self.Initial_CV_textEdit.toPlainText()))
             initial_value = int(self.Initial_CV_textEdit.toPlainText())
             initial_value=initial_value+2000
 
+            # Send to the psoc the value
             b=int(initial_value>>8)
             c=int(initial_value & (0xFF))
             self.serial_worker.port.write([b])
@@ -1282,12 +1307,15 @@ class Ui_ClinicianWindow(object):
             self.serial_worker.port.write([c])
             time.sleep(0.1)     
 
+        # If the final value has been updated
         elif (char == UPDATE_FINAL):
             logging.info("Received: {}".format(self.Final_CV_textEdit.toPlainText()))
 
+            # Read what has been written 
             final_value = int(self.Final_CV_textEdit.toPlainText())
             final_value=final_value+2000
-           
+
+            # Send to the psoc the value           
             b=int(final_value>>8)
             c=int(final_value & (0xFF))
             self.serial_worker.port.write([b])
@@ -1295,9 +1323,11 @@ class Ui_ClinicianWindow(object):
             self.serial_worker.port.write([c])
             time.sleep(0.1)     
 
+        # If the time value has been updated
         elif (char == UPDATE_TIME):
             logging.info("Received: {}".format(self.Time_CV_textEdit.toPlainText()))
 
+            # Send to the psoc the value
             time_value = int(self.Time_CV_textEdit.toPlainText())
             self.serial_worker.port.write([time_value])          
             UPDATE_TIME_FLAG=True
@@ -1305,11 +1335,14 @@ class Ui_ClinicianWindow(object):
         self.serial_worker.send('z')
         time.sleep(0.1)
         
+
+        # Check if the psoc has received all the needed parameters 
         if (self.serial_worker.read() == "CV ready"):
             
             if UPDATE_SCAN_FLAG:
                 
-                time_value = int(((final_value - initial_value)/scan_rate)*2)
+                # If the scan rate has been set, update automatically the time
+                time_value = int(((final_value - initial_value)/scan_rate))
                 time_str = str(time_value)
 
                 logging.info("Final_value: {}".format(final_value))
@@ -1319,6 +1352,8 @@ class Ui_ClinicianWindow(object):
                 self.Time_CV_textEdit.setPlainText(time_str)
 
             elif UPDATE_TIME_FLAG:
+
+                # If the time has been set, update automatically the scan rate
                 scan_rate = int((final_value - initial_value)/time_value)
                 scan_rate_str = str(scan_rate)
                 self.Scan_CV_textEdit.setPlainText(scan_rate_str)
@@ -1330,6 +1365,9 @@ class Ui_ClinicianWindow(object):
             time.sleep(0.1)
 
 
+
+
+    ### CHECK SERIAL PORT STATUS METHOD ###
     def check_serialport_status(self, port_name, status):
         """!
         @brief Handle the status of the serial port connection.
@@ -1351,6 +1389,8 @@ class Ui_ClinicianWindow(object):
             self.Connection_label.setText("CONNECTED")    
 
 
+
+    ### CHECK SERIAL WORKER TERMINATION METHOD ###
     def connected_device(self, port_name):
         """!
         @brief Checks on the termination of the serial worker.
@@ -1358,28 +1398,18 @@ class Ui_ClinicianWindow(object):
         logging.info("Port {} closed.".format(port_name))
 
 
-    def ExitHandler(self):
-        """!
-        @brief Kill every possible running thread upon exiting application.
-        """
-        self.serial_worker.is_killed = True
-        self.serial_worker.killed()
-        self.graph_worker.is_killed_graph = True
-        self.graph_worker.killed_graph()       
 
-    ##################
-    # GRAPH METHODS #
-    ##################
+    ### METHOD TO SET UP THE CV PLOT UPDATE ###
     @pyqtSlot()
     def draw_CV(self):
         """!
-        @brief Draw the plots.
+        @brief Setup all needed elements for the CV plot.
         """
         global RECEIVE_CV_DATA
         global RECEIVE_AMP_DATA
         global RECEIVE_HISTORY
 
-
+        # Send command to psoc
         self.serial_worker.send('G')
         time.sleep(0.1)
         self.serial_worker.send('z')
@@ -1387,11 +1417,13 @@ class Ui_ClinicianWindow(object):
  
         self.CV_line = self.plot(self.graphWidget_CV, self.x, self.y,'r')
 
+        # Kill the serial worker thread
         self.serial_worker.is_killed = True
         self.serial_worker.killed()
         time.sleep(0.5)
 
-        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
+        self.graph_worker = UpdateGraphWorker(port_name_global) 
+       
         # connect worker signals to functions
         self.graph_worker.graph_signals.plot_values_CV.connect(self.update_plot_data)
 
@@ -1404,16 +1436,17 @@ class Ui_ClinicianWindow(object):
 
 
 
-
+    ### METHOD TO SET UP THE AMP PLOT UPDATE ###
     @pyqtSlot()
     def draw_AMP(self):
         """!
-        @brief Draw the plots.
+        @brief Setup all needed elements for the AMP plot.
         """
         global RECEIVE_AMP_DATA
         global RECEIVE_CV_DATA
         global RECEIVE_HISTORY
 
+        # Send command to psoc
         self.graph_worker.send_graph('H')
         time.sleep(0.1)
         self.graph_worker.send_graph('z')
@@ -1421,76 +1454,14 @@ class Ui_ClinicianWindow(object):
 
 
         self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP,'r')
-        
+
+        # Kill the graph worker thread        
         self.graph_worker.is_killed_graph = True
         self.graph_worker.killed_graph()
         time.sleep(0.5)
 
-        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
+        self.graph_worker = UpdateGraphWorker(port_name_global)
 
-        self.graph_worker.graph_signals.plot_values_AMP.connect(self.update_plot_data_AMP)
-
-        RECEIVE_CV_DATA = False       
-        RECEIVE_AMP_DATA = True
-        RECEIVE_HISTORY=False
-
-        # execute the worker
-        self.threadpool.start(self.graph_worker)
-
-    def show_result(self):
-        
-        self.Value_data_label.setFont(QtGui.QFont('Arial', 80))
-        self.Value_data_label.setText(str(result))
-
-
-    def show_History(self):
-        global RECEIVE_AMP_DATA
-        global RECEIVE_CV_DATA
-        global RECEIVE_HISTORY
-
-        self.graph_worker.send_graph('M')
-        time.sleep(0.1)
-        self.graph_worker.send_graph('z')
-        time.sleep(0.1)
-
-        
-        self.graph_worker.is_killed_graph = True
-        self.graph_worker.killed_graph()
-        time.sleep(0.2)
-
-        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
-        
-        self.graph_worker.graph_signals.history.connect(self.display_history_data)
-
-
-        RECEIVE_CV_DATA = False       
-        RECEIVE_AMP_DATA = False
-        RECEIVE_HISTORY=True
-
-        # execute the worker
-        self.threadpool.start(self.graph_worker)        
-
-
-    def draw_fetch(self):
-        """!
-        @brief Draw the plots.
-        """
-        global RECEIVE_CV_DATA
-        global RECEIVE_AMP_DATA
-        global RECEIVE_HISTORY
-
-        self.serial_worker.send('F')
-        time.sleep(0.1)
-        self.serial_worker.send('z')
-        time.sleep(0.1)
- 
-        self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP,'r')
-
-        self.serial_worker.is_killed = True
-        self.serial_worker.killed()
-        time.sleep(0.5)
-
-        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
         # connect worker signals to functions
         self.graph_worker.graph_signals.plot_values_AMP.connect(self.update_plot_data_AMP)
 
@@ -1503,6 +1474,86 @@ class Ui_ClinicianWindow(object):
 
 
 
+    ### METHOD TO SHOW THE MEASUREMENT RESULT ###
+    def show_result(self):
+        """!
+        @brief Show the glucose concentration in the appropriate tab.
+        """        
+        self.Value_data_label.setFont(QtGui.QFont('Arial', 80))
+        self.Value_data_label.setText(str(result))
+
+
+    ### METHOD TO SET UP THE MEASUREMENTS HISTORY DISPLAY ###
+    def show_History(self):
+        """!
+        @brief Show the measurement history in the appropriate tab.
+        """ 
+        global RECEIVE_AMP_DATA
+        global RECEIVE_CV_DATA
+        global RECEIVE_HISTORY
+
+        # Send command to psoc
+        self.graph_worker.send_graph('M')
+        time.sleep(0.1)
+        self.graph_worker.send_graph('z')
+        time.sleep(0.1)
+
+        # Kill the graph worker thread        
+        self.graph_worker.is_killed_graph = True
+        self.graph_worker.killed_graph()
+        time.sleep(0.2)
+
+        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
+
+        # connect worker signals to functions       
+        self.graph_worker.graph_signals.history.connect(self.display_history_data)
+
+
+        RECEIVE_CV_DATA = False       
+        RECEIVE_AMP_DATA = False
+        RECEIVE_HISTORY=True
+
+        # execute the worker
+        self.threadpool.start(self.graph_worker)        
+
+
+    ### METHOD TO SET UP THE AMPEROMETRY PLOT UPDATE (FETCH) ###
+    def draw_fetch(self):
+        """!
+        @brief Draw the plots.
+        """
+        global RECEIVE_CV_DATA
+        global RECEIVE_AMP_DATA
+        global RECEIVE_HISTORY
+
+        # Send command to psoc
+        self.serial_worker.send('F')
+        time.sleep(0.1)
+        self.serial_worker.send('z')
+        time.sleep(0.1)
+ 
+        self.AMP_line = self.plot(self.graphWidget_AMP, self.x_AMP, self.y_AMP,'r')
+
+
+        # Kill the serial worker thread 
+        self.serial_worker.is_killed = True
+        self.serial_worker.killed()
+        time.sleep(0.5)
+
+        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
+        
+        # connect worker signals to functions
+        self.graph_worker.graph_signals.plot_values_AMP.connect(self.update_plot_data_AMP)
+
+        RECEIVE_CV_DATA = False       
+        RECEIVE_AMP_DATA = True
+        RECEIVE_HISTORY=False
+
+        # execute the worker
+        self.threadpool.start(self.graph_worker)
+
+
+    ### METHOD TO PLOT DATA ###
     @pyqtSlot()
     def plot(self, graph, x, y, color):  #method called by the draw method
         """!
@@ -1511,6 +1562,20 @@ class Ui_ClinicianWindow(object):
         pen = pg.mkPen(color=color)
         line = graph.plot(x, y, pen=pen)
         return line
+
+
+
+    ### EXIT HANDLER ###
+    def ExitHandler(self):
+        """!
+        @brief Kill every possible running thread upon exiting application.
+        """
+        self.serial_worker.is_killed = True
+        self.serial_worker.killed()
+        self.graph_worker.is_killed_graph = True
+        self.graph_worker.killed_graph() 
+
+
 
 #############
 #  RUN APP  #
