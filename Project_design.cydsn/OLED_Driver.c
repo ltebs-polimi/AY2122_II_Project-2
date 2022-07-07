@@ -84,7 +84,7 @@
 static uint8_t oled_i2c_address;
 static uint8_t DISPLAY_buffer[DISPLAY_HEIGHT * DISPLAY_WIDTH / 8 + 1] = {0x40};     //Dimension increased by 1 with respect to pixel number to include 0x40 to submit data in position [0]
 static uint8_t* display_buf = DISPLAY_buffer+1;                                     //Pointer to next memory cell
-static uint16_t display_buf_size = sizeof(DISPLAY_buffer)-1;                            //-1 because we have to subtract the starting command 0x40
+static uint16_t display_buf_size = sizeof(DISPLAY_buffer)-1;                        //-1 because we have to subtract the starting command 0x40
 
 // OLED GRAPHIC LOGOS
 const uint8_t POLIMI_logo[] = {
@@ -457,13 +457,25 @@ void rtx_setCursor(int16_t x, int16_t y) {
     cursor_y = y;
 }
 
+/*  SET TEXT COLOR
+*   \brief: Function that sets text color (black or white)
+*   \Parameters: 
+*       @param color: WHITE or BLACK
+*   \Return: NONE
+*/
 void rtx_setTextColor(uint16_t color) {
     // For 'transparent' background, we'll set the bg
     // to the same as fg instead of using a flag
     textcolor = textbgcolor = color;
 }
 
-///////////////////
+/*  SET ROTATION
+*   \brief: Function that rotates pixels
+*   \Parameters: 
+*       @param px: x pixel coordinate
+*       @param py: y pixel coordinate
+*   \Return: NONE
+*/
 static void rtx_rotation_adjust(int16_t* px, int16_t* py){
 
     int16_t y0 = *py;
@@ -484,7 +496,15 @@ static void rtx_rotation_adjust(int16_t* px, int16_t* py){
     }
 }
 
-////////////
+/*  DRAW LINE
+*   \brief: Function that draws a line
+*   \Parameters: 
+*       @param x1: x coordinate of the first pixel
+*       @param y1: y coordinate of the first pixel
+*       @param x2: x coordinate of the second pixel
+*       @param y2: y coordinate of the second pixel
+*   \Return: NONE
+*/
 static void rtx_hvLine(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color){
     
     if( x1 != x2 && y1 != y2 ){
@@ -518,7 +538,18 @@ static void rtx_hvLine(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t 
     display_line(x1, y1, x2, y2, color);
 }
 
-///////////////////////////
+/*  DRAW BITMAP
+*   \brief: Function that draws a bitmap (aka B&W image)
+*   \Parameters: 
+*       @param x: x coordinate of the first pixel
+*       @param y: y coordinate of the first pixel
+*       @param *bitmap: pointer to bitmap structure
+*       @param w: bitmap width
+*       @param h: bitmap height
+*       @param color: bitmap color
+*       @param bg: bitmap background color
+*   \Return: NONE
+*/
 void rtx_drawBitmap(int16_t x, int16_t y,
             const uint8_t *bitmap, int16_t w, int16_t h,
             uint16_t color, uint16_t bg) {

@@ -1,20 +1,19 @@
-/**
-*   \file ErrorCodes.h
-*   \brief Error codes definition.
-*   
-*   This file contains several definition of error codes to be used throughout
-*   the project to be consisted with the written firmware.
-*
-*   \author Davide Marzorati
-*   \date September 12, 2019
+/* ========================================================================
+ *
+ * ELECTRONIC TECHNOLOGIES AND BIOSENSORS LABORATORY
+ * Academic year 2021/22, II Semester
+ * Final Project
+ *
+ * Authors: Group 2
+ *
+ * ------------------------- ErrorCodes (header) --------------------------
+ * This file contains several definition of error codes to be used 
+ * throughout the project to be consisted with the written firmware.
+ * ------------------------------------------------------------------------
+ * 
+ * ========================================================================
 */
 
-/**
-*   \brief Error codes.
-* 
-*   This definition defines several error codes that will
-*   be used throughout the project.
-*/
 #ifndef __ERRORCODES_H
     #define __ERRORCODES_H
     

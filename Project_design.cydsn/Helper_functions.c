@@ -7,7 +7,7 @@
  * Authors: Group 2
  *
  * ---------------------- HELPER FUNCTIONS (source) -----------------------
- * 
+ * In this file, functions in HELPER FUNCTIONS (header) are implemented.
  * ------------------------------------------------------------------------
  * 
  * ========================================================================
@@ -34,15 +34,11 @@ void helper_HardwareSetup(void) {
 
 }
 
-/******************************************************************************
-* Function Name: helper_HardwareStart
-*******************************************************************************
-*
-* Summary:
-*    Start all the hardware needed for an experiment.
-*
-*******************************************************************************/
-
+/*  HELPER HARDWARE START
+*   \brief: Start all the hardware needed for an experiment.
+*   \Parameters: NONE
+*   \Return: NONE
+*/
 void helper_HardwareStart(void){  // start all the components that have to be on for a reading
     ADC_SigDel_Start();  
     TIA_Start(); 
@@ -51,19 +47,14 @@ void helper_HardwareStart(void){  // start all the components that have to be on
     PWM_isr_Start();
     //ADC_SAR_Start();
     
-    //DVDAC is already started
-    
+    //DVDAC is already started    
 }
 
-/******************************************************************************
-* Function Name: helper_HardwareWakeup
-*******************************************************************************
-*
-* Summary:
-*    Start all the hardware needed for an experiment.
-*
-*******************************************************************************/
-
+/*  HELPER HARDWARE WAKEUP
+*   \brief: Start/wakes up all the hardware needed for an experiment.
+*   \Parameters: NONE
+*   \Return: NONE
+*/
 void helper_HardwareWakeup(void){  // wakeup all the components that have to be on for a reading
     ADC_SigDel_Wakeup();
     TIA_Wakeup();
@@ -78,15 +69,11 @@ void helper_HardwareWakeup(void){  // wakeup all the components that have to be 
     
 }
 
-/******************************************************************************
-* Function Name: helper_HardwareWakeup
-*******************************************************************************
-*
-* Summary:
-*    Put to sleep all the hardware needed for an experiment.
-*
-*******************************************************************************/
-
+/*  HELPER HARDWARE SLEEP
+*   \brief: Put to sleep all the hardware needed for an experiment.
+*   \Parameters: NONE
+*   \Return: NONE
+*/
 void helper_HardwareSleep(void){  // put to sleep all the components that have to be on for a reading
     ADC_SigDel_Sleep();
     DVDAC_Sleep();
@@ -97,6 +84,14 @@ void helper_HardwareSleep(void){  // put to sleep all the components that have t
     
 }
 
+
+/*  HELPER CONVERT TO DECIMAL
+*   \brief: Function that converts a 8-bit array into a decimal number.
+*   \Parameters:
+*       @param array[]: 8-bit array
+*       @param len: length of the array
+*   \Return: NONE
+*/
 uint16 helper_Convert2Dec(uint8 array[], uint8 len){
     uint16 num = 0;
     for (int i = 0; i < len; i++){
@@ -104,7 +99,5 @@ uint16 helper_Convert2Dec(uint8 array[], uint8 len){
     }
     return num;
 }
-
-
 
 /* [] END OF FILE */

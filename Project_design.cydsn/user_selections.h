@@ -26,11 +26,8 @@
         
         
     #define DO_NOT_RESTART_ADC      0
-       
-    /***************************************
-    *        Function Prototypes
-    ***************************************/  
-       
+
+//Function Prototypes  
     void user_setup_TIA_ADC(uint8 data_buffer[]);
     void user_run_cv_experiment(uint8 data_buffer[]);
     void user_voltage_source_funcs(uint8 data_buffer[]);
@@ -42,13 +39,10 @@
     uint16 user_lookup_table_maker(void);
     void user_run_amperometry(void);
 
-
-    /***************************************
-    * Global variables external identifier
-    ***************************************/
-
+//Global variables external identifier
     extern uint8 TIA_resistor_value_index;
     extern uint8 ADC_buffer_index;
   
 #endif
+
 /* [] END OF FILE */

@@ -7,7 +7,7 @@
  * Authors: Group 2
  *
  * -------------------- INTERRUPT ROUTINES (source) -----------------------
- * Interrupt service routines definition
+ * Interrupt service routines implementation.
  * ------------------------------------------------------------------------
  * 
  * ========================================================================

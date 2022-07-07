@@ -12,6 +12,8 @@
  * 
  * ========================================================================
 */
+
+//INCLUDES
 #include <project.h>
 #include <string.h>
 #include <stdio.h>
@@ -28,6 +30,7 @@
 #include "InterruptRoutines.h"
 #include "user_selections.h"
 
+//STATES DEFINE
 #define INITIALIZATION 0
 #define IDLE 1
 #define LOADING 2
@@ -36,6 +39,7 @@
 #define AMPEROMETRY_USER 5
 #define STALL 6
 
+//GLOBAL READY TO ACCESS
 uint8_t seconds = 0;
 uint8_t rtc_data_register;
 int16 potential_EEPROM=0;
@@ -74,7 +78,6 @@ int main(void)
     
     spacer = 'A';
    
-    
     CyGlobalIntEnable;
     
     //Initialize Interrupt routines variables
@@ -107,11 +110,13 @@ int main(void)
     flag_GUI_running=false;
     flag_user_measurement=false;
         
+    //Communication protocols start
     I2CMASTER_Start();
     UART_DEBUG_Start();
     
     CyDelay(5);
-
+    
+    //Peripherals initialization
     display_init(DISPLAY_ADDRESS);
     rtc_init(RTC_ADDRESS);
         
@@ -123,6 +128,7 @@ int main(void)
     */
     //set_RTC(0x40,0x32,0x09,0x06,JULY,Y_2022);
     
+    //RTC debug time check via Terminal (if wrong date, see line 125)
     rtc_read_time(RTC_ADDRESS);
     len = snprintf(rtc_content, sizeof(rtc_content), "%d-%d-%d %02d:%02d\n", current_date, 
                current_month, current_year, current_hours, current_minutes);
@@ -131,6 +137,7 @@ int main(void)
     uint8_t glucose_concentration_from_memory = 0;
     char flag = 0;
     
+    //OLED graphics only for main
     const uint8_t GUI_activated[] = {
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -238,10 +245,7 @@ int main(void)
         I2CMASTER_MasterSendStop();
 	}
 	UART_DEBUG_PutString("\n\n");
-    
-    
-    
-    
+
     
     // PSOC Variables initialization
     lut_length=5000; // how long the look up table is,initialize large so when starting isr the ending doesn't get triggered
@@ -251,8 +255,7 @@ int main(void)
     helper_HardwareSetup();  //user-defined function to initialize the HW 
     
     ADC_SigDel_SelectConfiguration(1, DO_NOT_RESTART_ADC); // select the configuration to be used for the ADC (2 possible configurations --> SERVONO ???)
-    
-    
+
     
     //Start the UART (used by the BT) and the corresponding isr
     UART_BLT_Start();
@@ -275,11 +278,13 @@ int main(void)
     
     TIA_SetResFB(TIA_RES_FEEDBACK_20K); //A 20KOhm feedback resistor is chosen for the TIA
     
+    //Fetch of previously saved EEPROM last saved value address
     eeprom_current_address = get_eeprom_current_address();
     
     //n_samples fetch
     n_measures = get_n_measures();
     
+    //Terminal print debugs. If errors or to reset the memory, see line 294 and comment from line 282 to 285 included
     len = snprintf(rtc_content, sizeof(rtc_content), "N_MEASURES: %d\r\n\n", n_measures);
     UART_DEBUG_PutString(rtc_content);
     
@@ -313,14 +318,18 @@ int main(void)
     {
         //CyWdtClear(); //The watchdog must be cleared using the CyWdtClear() function before three ticks of the watchdog timer occur
         
+        //OUTER SWITCH CASE
         switch(state) {
-                                    
+            
+            //STALL: Measurement done, history open. The PSoC does not do anything
             case STALL:    
             break;
             
+            //INITIALIATION: OLED is started and also peripherals are checked
             case INITIALIZATION:
                 OLED_welcome_screen();
                 
+                //Serial terminal debug
                 rtc_read_time(RTC_ADDRESS);
                 len = snprintf(rtc_content, sizeof(rtc_content), "Secondi: %d\r\n", current_seconds);
                 UART_DEBUG_PutString(rtc_content);
@@ -351,6 +360,8 @@ int main(void)
 
             break;
             
+            //IDLE: the microcontroller awaits if the user is connecting to a GUI or presses the 
+            //button to use the OLED screen
             case IDLE:
                 button_state = Pin_Button_Read();
                 //len = snprintf(message, sizeof(message), "%d\n", button_state);
@@ -394,7 +405,9 @@ int main(void)
                 
             
             break;
-                
+               
+            //LOADING: if the user is not connected to a GUI, this state displays a loading bar while
+            //chronoamperometry procedure is performed
             case LOADING:
                 
                 if(flag_first_chrono == 1)
@@ -419,6 +432,7 @@ int main(void)
                 
             break;
             
+            //DISPLAY_MEASUREMENT: on the OLED, glucose concentration value is displayed
             case DISPLAY_MEASUREMENT:
                 finished_chronoAmp = 0;
                 if(power_on){
@@ -443,7 +457,7 @@ int main(void)
             break;
                
         
-
+            //GUI: user connected to a GUI (OLED bypassed)
             case GUI:
                 
                 
@@ -477,10 +491,11 @@ int main(void)
                 //Check if something has been received by the UART 
                 if (Command_ready_Flag == true && Button_Flag==true) {  
                     
+                    //INNER SWITCH CASE
                     //Switch case based on the first character that is received
                     switch (command[0]) { 
                         
-                    
+                    //CONNECT_TO_COM_PORT: checks if device is connected to COM port via GUI
                     case CONNECT_TO_COM_PORT: // 'A' Connect to the BT COM port
                         
                         len= snprintf(str, sizeof(str), "comando ricevuto in case GUI: %c\r\n", command[0]);
@@ -493,7 +508,7 @@ int main(void)
                         break;
                    
                     
-                        
+                    //SET_SCAN_RATE: receives scan rate value from GUI  
                     case SET_SCAN_RATE:  // 'B' Set the scan rate (in mV per second) by properly setting the PWM period 
                         
                         selected_scan_rate = (command[1]<<8) | (command[2]&(0xFF));
@@ -518,7 +533,7 @@ int main(void)
                         
                         break;
                     
-
+                    //SET_CV_START_VALUE: receives CV start value from GUI
                     case SET_CV_START_VALUE: // 'C' Set the initial value for the CV scan (in mV)
                         
                         start_dac_value = (command[1]<<8) | (command[2]&(0xFF));
@@ -540,7 +555,8 @@ int main(void)
                         
             
                         break;
-                        
+                     
+                    //SET_CV_END_VALUE: receives CV end value from GUI
                     case SET_CV_END_VALUE: // 'D' Set the initial value for the CV scan (in mV)
                         
                         end_dac_value = (command[1]<<8) | (command[2]&(0xFF));
@@ -562,8 +578,9 @@ int main(void)
                         
                         }
                         
-                        break;             
-
+                        break;
+                        
+                    //SET_CV_TIME: receives CV time value from GUI
                     case SET_CV_TIME: // 'E' Set the time duration for the CV scan (in seconds)
                         
                         Update_timevalue_Flag=true;
@@ -582,7 +599,7 @@ int main(void)
                         
                         break;    
                         
-
+                    //CLINICIAN_FETCH: fetches CV value from EEPROM (command received from GUI)
                     case CLINICIAN_FETCH: 
                         
                         //fetch potential value from EEPROM (save it in the correct global variable) 
@@ -597,7 +614,7 @@ int main(void)
                         
                         break;    
                         
-                        
+                    //START_CYCLIC_VOLTAMMETRY: starts the CV procedure  
                     case START_CYCLIC_VOLTAMMETRY:   // 'G' Start a cyclic voltammetry experiment
                         
                         if(CV_ready_Flag==true){
@@ -613,7 +630,8 @@ int main(void)
                         }
                         
                         break;
-                        
+                    
+                    //FINISHED_CV: things to be done when CV is finished
                     case FINISHED_CV:
                         
                         save_CV_result();
@@ -625,7 +643,7 @@ int main(void)
                         
                         break;
                     
-
+                    //RUN_AMPEROMETRY: runs the chronoamperometry procedure
                     case RUN_AMPEROMETRY:  // 'H' run an amperometric experiment --> set the dac to a certain value
                         
                         CyDelay(2000);
@@ -638,7 +656,8 @@ int main(void)
                         }
 
                         break;
-                        
+                    
+                    //USER_GUI_MEASUREMENT: sends CA result to GUI to display the value
                     case USER_GUI_MEASUREMENT:
                         
                         flag_user_measurement=true;
@@ -651,7 +670,7 @@ int main(void)
                        
                         break;
                     
-                    
+                    //HISTORY: sends EEPROM saved values to GUI to show the history of measurements
                     case HISTORY:
                         
                         CyDelay(2000);

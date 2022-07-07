@@ -7,7 +7,7 @@
  * Authors: Group 2
  *
  * ---------------------- HELPER FUNCTIONS (header) -----------------------
- * 
+ * This file contains the functions to control the Hardware of the project.
  * ------------------------------------------------------------------------
  * 
  * ========================================================================
@@ -35,8 +35,6 @@
     void helper_HardwareWakeup(void);
 
     uint16 helper_Convert2Dec(uint8 array[], uint8 len);
-
-
 
 #endif
 /* [] END OF FILE */

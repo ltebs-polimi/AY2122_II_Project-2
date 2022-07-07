@@ -8,7 +8,7 @@
  *
  * ----------------------- LUT FUNCTIONS (header) -------------------------
  * This file contains the function prototypes and constants used for
- *  the protocols to create look up tables
+ *  the protocols to create look up tables.
  * ------------------------------------------------------------------------
  * 
  * ========================================================================

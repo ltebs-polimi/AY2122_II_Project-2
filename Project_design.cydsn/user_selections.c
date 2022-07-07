@@ -19,31 +19,16 @@
 #include "InterruptRoutines.h"
 #include "lut_functions.h"
 
-/******************************************************************************
-* Function Name: user_start_cv_run
-*******************************************************************************
-*
-* Summary:
-*  Start a cyclic voltammetry experiment.  The look up table in waveform_CV_lut should
-*  already be created.  If the dac isr is already running this will not start and throws
-*  and error through the USB.  
-*  
-* Global variables:
-*  uint16 lut_value: value gotten from the look up table that is to be applied to the DAC
-*  uint16 lut_index: current index of the look up table
-*  uint16 waveform_CV_lut[]:  look up table of the waveform to apply to the DAC
-*
-* Parameters:
-*  None
-*
-* Return:
-*  Starts the isr's used to perform an experiment else if the dac is already running,
-*  possibly because another experiment is already running, return an error through the USB
-*
-*******************************************************************************/
 
-// It is used to setup everything that is needed for a CV scan, then the look up table is actually scanned in the dac isr (see main.c)
-void user_start_cv_run(void){
+/* START CYCLIC VOLTAMMETRY
+*   \brief: Start a cyclic voltammetry experiment.  The look up table in waveform_CV_lut should
+*           already be created.  If the dac isr is already running this will not start and throws
+*           and error through the USB.
+*   \Parameters: NONE
+*   \Return: NONE (Starts the isr's used to perform an experiment else if the dac is already running,
+*                  possibly because another experiment is already running, return an error through the USB)
+*/
+void user_start_cv_run(void){  // It is used to setup everything that is needed for a CV scan, then the look up table is actually scanned in the dac isr (see main.c)
     if (!isr_dac_GetState()){  // enable the dac isr if it isn't already enabled
         if (isr_adcAmp_GetState()) {  // User has started cyclic voltammetry while amp is already running, so disable amperometry
             isr_adcAmp_Disable();
@@ -65,24 +50,12 @@ void user_start_cv_run(void){
 
 }
 
-/******************************************************************************
-* Function Name: user_reset_device
-*******************************************************************************
-*
-* Summary:
-*  Stop all operations by disabling all the isrs and reset the look up table index to 0
-*  
-* Global variables:
-*  uint16 lut_index: current index of the look up table
-*
-* Parameters:
-*  None
-*
-* Return:
-*  None
-*
-*******************************************************************************/
 
+/*  RESET DEVICE
+*   \brief: Stop all operations by disabling all the isrs and reset the look up table index to 0
+*   \Parameters: NONE
+*   \Return: NONE
+*/
 void user_reset_device(void) {
     isr_dac_Disable();
     isr_adc_Disable();
@@ -93,29 +66,12 @@ void user_reset_device(void) {
 }
 
 
-
-/******************************************************************************
-* Function Name: user_set_isr_timer
-*******************************************************************************
-*
-* Summary:
-*  Set the PWM that is used as the isr timer
-* 
-* Parameters:
-*  uint8 command
-*
-* Explanation:
-* the look up table for CV is created with all values in mV between the start and the end value
-* Then this look up table is scanned in the interrupt of the DAC a value at a time based on the isr triggered by the PWM
-* By setting a proper period for PWM, the look up table will be scanned with different speeds
-* ex. scan rate=100 mV/sec --> PWM period = 1000 (i.e. 1 sec) / 100 = 10 ms (i.e. 100Hz) --> look up table is scanned 100 times every second
-*  
-* Return:
-*  Set the period register of the pwm 
-*
-*******************************************************************************/
-
-
+/*  LUT MAKE LINE
+*   \brief: Sets the PWM that is used as the isr timer
+*   \Parameters:
+*       @param scan_rate: slope of the triangle waveform
+*   \Return: NONE
+*/
 void user_set_isr_timer(uint16 scan_rate) {
     
     PWM_isr_Wakeup();
@@ -125,24 +81,13 @@ void user_set_isr_timer(uint16 scan_rate) {
     PWM_isr_Sleep();
 }
 
-/******************************************************************************
-* Function Name: user_chrono_lut_maker
-*******************************************************************************
-*
-* Summary:
-*  Make a look up table that will run a chronoamperometry experiment.  Hackish now
-* 
-*
-*  
-* Global variables:
-*  uint16 lut_value: value gotten from the look up table that is to be applied to the DAC
-*  uint16 waveform_amp_lut[]:  look up table of the waveform to apply to the DAC
-*  
-* Return:
-*  4000 - how long the look up table will be
-*
-*******************************************************************************/
 
+/*  CHRONO LUT MAKER
+*   \brief: Makes a look up table that will run a chronoamperometry experiment.
+*   \Parameters:
+*       @param potential_max: max pulse voltage
+*   \Return: NONE
+*/
 void user_chrono_lut_maker(int16 potential_max) {
     PWM_isr_Wakeup();
     
@@ -155,22 +100,12 @@ void user_chrono_lut_maker(int16 potential_max) {
 
 }
 
-/******************************************************************************
-* Function Name: user_lookup_table_maker
-*******************************************************************************
-*
-* Summary:
-*  Make a look up table for CV
-* 
-* Global variables:
-*  uint16 lut_value: value to get from the look up table and apply to the DAC
-*  uint16 waveform_CV_lut[]:  look up table of the waveform to apply to the DAC
-*  
-* Return:
-*  uint16 lut_length - how many look up table elements there are
-*
-*******************************************************************************/
 
+/*  CHRONO LUT MAKER
+*   \brief: Makes a look up table for CV.
+*   \Parameters: NONE
+*   \Return: lut_length: length of the CV look up table
+*/
 uint16 user_lookup_table_maker(void) {
     PWM_isr_Wakeup();
 
@@ -184,11 +119,12 @@ uint16 user_lookup_table_maker(void) {
     return lut_length;
 }
 
-/******************************************************************************
-* Function Name: user_run_amperometry
 
-*******************************************************************************/
-
+/*  RUN AMPEROMETRY
+*   \brief: runs the chronoamperometry test.
+*   \Parameters: NONE
+*   \Return: NONE
+*/
 void user_run_amperometry(void) {
     helper_HardwareWakeup();  
     if (!isr_adcAmp_GetState()) {  // enable isr if it is not already
@@ -205,6 +141,6 @@ void user_run_amperometry(void) {
     CyDelay(20);
     isr_adcAmp_Enable();
     isr_dac_AMP_Enable();
-
 }
+
 /* [] END OF FILE */
