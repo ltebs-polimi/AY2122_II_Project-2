@@ -39,7 +39,9 @@
     void save_CV_result(void);
     int16 get_CV_result(void);
     uint8_t get_measurement_from_memory(uint16_t eeprom_address);
+    uint16_t get_eeprom_current_address();
     void display_history(void);
+    uint8 get_n_measures();
     
 #endif
 

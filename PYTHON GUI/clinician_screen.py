@@ -48,8 +48,10 @@ UPDATE_SCAN_FLAG=False
 UPDATE_TIME_FLAG=False 
 RECEIVE_CV_DATA= False
 RECEIVE_AMP_DATA= False
+RECEIVE_HISTORY= False
 FINISHED_CV_GRAPH = False
 FINISHED_AMP_GRAPH = False
+FINISHED_HISTORY = False
 PACKET_ARRIVED = False
 READ_PACKET_DATA= False
 PACKET_ARRIVED_AMP=False
@@ -63,6 +65,7 @@ UPDATE_INITIAL = "C"
 UPDATE_FINAL= "D"
 UPDATE_TIME= "E"
 
+counter=0
 
 port_name_global = 0 
 current_CV = float(0.0)
@@ -72,7 +75,11 @@ current_AMP= float(0.0)
 potential_AMP= float(0.0)
 stringa_prova=''
 stringa_prova_AMP=''
+stringa_prova_history=''
+history_line=''
+received_character=False
 
+index_Z=[]
 
 # Global variables
 final_value=int()
@@ -224,8 +231,7 @@ class UpdateGraphSignals(QObject):
     """
     plot_values_CV = pyqtSignal(int, float)
     plot_values_AMP= pyqtSignal(float, float)
-
-
+    history= pyqtSignal(int, str, str, str)
 
 ######################
 # UPDATE GRAPH WORKER#
@@ -267,14 +273,13 @@ class UpdateGraphWorker(QRunnable):
 
         global FINISHED_CV_GRAPH
         global FINISHED_AMP_GRAPH
+        global FINISHED_HISTORY
         global potential_CV
         global LIMIT_REACHED
         global RECEIVE_CV_DATA
         global initial_value
         global final_value
         global READ_PACKET_DATA
-
-
      
         
         if RECEIVE_CV_DATA:
@@ -290,6 +295,15 @@ class UpdateGraphWorker(QRunnable):
 
                 self.read_AMP_plot()
 
+        if RECEIVE_HISTORY:
+            
+            logging.info("receive history")
+
+            while FINISHED_HISTORY==False:
+                
+                self.read_history()
+
+            
     
     @pyqtSlot()
     def read_AMP_plot(self):
@@ -401,6 +415,7 @@ class UpdateGraphWorker(QRunnable):
         PACKET_ARRIVED=False
         READ_PACKET_DATA=False
 
+
         if RECEIVE_CV_DATA:
 
             if(self.port_graph.in_waiting>0):
@@ -456,6 +471,74 @@ class UpdateGraphWorker(QRunnable):
 
             if(potential_CV == initial_value and LIMIT_REACHED):
                 FINISHED_CV_GRAPH = True
+                
+        counter=counter+1
+
+    @pyqtSlot()
+    def read_history(self):
+        """!
+        @brief Basic function to send a single char on serial port.
+        """
+        global stringa_prova_history
+        global index_Z
+        global stringa_history_1
+        global stringa_history_2
+        global stringa_history_3
+        global FINISHED_HISTORY
+        global received_character
+
+        received_character=False
+
+
+        logging.info("in read history function") 
+
+        if RECEIVE_HISTORY:
+
+            logging.info("in receive history if")  
+
+            if(self.port_graph.in_waiting>0):
+                stringa_prova_history += self.port_graph.read().decode('utf-8', errors='replace')
+                logging.info(stringa_prova_history)
+                received_character=True
+
+
+            if(received_character==True and stringa_prova_history[len(stringa_prova_history)-1]=='F'):
+
+                for i in range(len(stringa_prova_history)):
+                    if(stringa_prova_history[i]=='Z'):
+                        index_Z.append(i)
+                
+                logging.info(index_Z)
+
+                if(len(index_Z)==1):
+                    stringa_history_1=stringa_prova_history[0:index_Z[0]]
+                    stringa_history_2=""
+                    stringa_history_3=""
+                    self.graph_signals.history.emit(len(index_Z),stringa_history_1, stringa_history_2, stringa_history_3)
+
+                if(len(index_Z)==2):
+                    stringa_history_1=stringa_prova_history[0:index_Z[0]]
+                    stringa_history_2=stringa_prova_history[index_Z[0]+1:index_Z[1]]
+                    stringa_history_3=""
+                    self.graph_signals.history.emit(len(index_Z),stringa_history_1, stringa_history_2, stringa_history_3)
+
+                if(len(index_Z)>=3):
+                    stringa_history_1=stringa_prova_history[0:index_Z[0]]
+                    stringa_history_2=stringa_prova_history[index_Z[0]+1:index_Z[1]]
+                    stringa_history_3=stringa_prova_history[index_Z[1]+1:index_Z[2]]
+                    self.graph_signals.history.emit(len(index_Z),stringa_history_1, stringa_history_2, stringa_history_3)
+
+                #if(len(index_Z)>3):
+                #    stringa_history_1=stringa_prova_history[index_Z[len(index_Z)-4]+1:index_Z[len(index_Z)-3]]
+                #    stringa_history_2=stringa_prova_history[index_Z[len(index_Z)-3]+1:index_Z[len(index_Z)-2]]
+                #    stringa_history_3=stringa_prova_history[index_Z[len(index_Z)-2]+1:index_Z[len(index_Z)-1]]
+                #    self.graph_signals.history.emit(len(index_Z),stringa_history_1, stringa_history_2, stringa_history_3)
+
+                    logging.info(stringa_history_1)
+                    logging.info(stringa_history_2)                    
+                    logging.info(stringa_history_3)
+
+                FINISHED_HISTORY=True
 
     @pyqtSlot()
     def send_graph(self, char):
@@ -907,7 +990,7 @@ class Ui_ClinicianWindow(object):
         self.History_label.setAlignment(QtCore.Qt.AlignCenter)
         self.History_label.setObjectName("History_label")
         self.gridLayout_13.addWidget(self.History_label, 2, 1, 1, 1)
-        self.Show_data_button = QtWidgets.QPushButton(self.frame_3)
+        self.Show_data_button = QtWidgets.QPushButton(self.frame_3, clicked= lambda: self.show_History())
         self.Show_data_button.setObjectName("Show_data_button")
         self.gridLayout_13.addWidget(self.Show_data_button, 0, 2, 1, 1)
         self.History_title_label = QtWidgets.QLabel(self.frame_3)
@@ -1011,7 +1094,7 @@ class Ui_ClinicianWindow(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("ClinicianWindow", "Data Visualization"))
         self.History_title_label.setText(_translate("ClinicianWindow", "MEASUREMENTS HISTORY:"))
         self.Show_data_button.setText(_translate("ClinicianWindow", "SHOW HISTORY"))
-        self.History_label.setText(_translate("ClinicianWindow", "HISTORY"))
+        self.History_label.setText(_translate("ClinicianWindow", ""))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), _translate("ClinicianWindow", "History"))
         self.connect_to_COM()
 
@@ -1054,6 +1137,28 @@ class Ui_ClinicianWindow(object):
 
         self.AMP_line.setData(self.x_AMP, self.y_AMP)  # Update the data.
 
+
+    def display_history_data(self, number_history, stringa_1, stringa_2, stringa_3):
+        global history_line
+
+        self.History_label.setFont(QtGui.QFont('Arial', 25))
+
+        if(number_history==1):
+            self.History_label.setText(stringa_1)
+
+        if(number_history==2):
+            history_line=stringa_1
+            history_line+="\n\n"
+            history_line+=stringa_2
+            self.History_label.setText(history_line)
+
+        if(number_history>=3):
+            history_line=stringa_1
+            history_line+="\n\n"
+            history_line+=stringa_2
+            history_line+="\n\n"
+            history_line+=stringa_3
+            self.History_label.setText(history_line)
 
     ####################
     # SERIAL INTERFACE #
@@ -1272,6 +1377,7 @@ class Ui_ClinicianWindow(object):
         """
         global RECEIVE_CV_DATA
         global RECEIVE_AMP_DATA
+        global RECEIVE_HISTORY
 
 
         self.serial_worker.send('G')
@@ -1291,6 +1397,7 @@ class Ui_ClinicianWindow(object):
 
         RECEIVE_AMP_DATA=False
         RECEIVE_CV_DATA  = True
+        RECEIVE_HISTORY=False
 
         # execute the worker
         self.threadpool.start(self.graph_worker)
@@ -1305,6 +1412,7 @@ class Ui_ClinicianWindow(object):
         """
         global RECEIVE_AMP_DATA
         global RECEIVE_CV_DATA
+        global RECEIVE_HISTORY
 
         self.graph_worker.send_graph('H')
         time.sleep(0.1)
@@ -1324,6 +1432,7 @@ class Ui_ClinicianWindow(object):
 
         RECEIVE_CV_DATA = False       
         RECEIVE_AMP_DATA = True
+        RECEIVE_HISTORY=False
 
         # execute the worker
         self.threadpool.start(self.graph_worker)
@@ -1334,6 +1443,33 @@ class Ui_ClinicianWindow(object):
         self.Value_data_label.setText(str(result))
 
 
+    def show_History(self):
+        global RECEIVE_AMP_DATA
+        global RECEIVE_CV_DATA
+        global RECEIVE_HISTORY
+
+        self.graph_worker.send_graph('M')
+        time.sleep(0.1)
+        self.graph_worker.send_graph('z')
+        time.sleep(0.1)
+
+        
+        self.graph_worker.is_killed_graph = True
+        self.graph_worker.killed_graph()
+        time.sleep(0.2)
+
+        self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
+        
+        self.graph_worker.graph_signals.history.connect(self.display_history_data)
+
+
+        RECEIVE_CV_DATA = False       
+        RECEIVE_AMP_DATA = False
+        RECEIVE_HISTORY=True
+
+        # execute the worker
+        self.threadpool.start(self.graph_worker)        
+
 
     def draw_fetch(self):
         """!
@@ -1341,7 +1477,7 @@ class Ui_ClinicianWindow(object):
         """
         global RECEIVE_CV_DATA
         global RECEIVE_AMP_DATA
-
+        global RECEIVE_HISTORY
 
         self.serial_worker.send('F')
         time.sleep(0.1)
@@ -1360,6 +1496,7 @@ class Ui_ClinicianWindow(object):
 
         RECEIVE_CV_DATA = False       
         RECEIVE_AMP_DATA = True
+        RECEIVE_HISTORY=False
 
         # execute the worker
         self.threadpool.start(self.graph_worker)

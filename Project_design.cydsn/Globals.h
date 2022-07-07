@@ -29,7 +29,7 @@
     #define RUN_AMPEROMETRY                 'H'
     #define FINISHED_CV                     'I'
     #define USER_GUI_MEASUREMENT            'L'
-
+    #define HISTORY                         'M' 
     
 // API CONSTANTS
     #define true                             1
@@ -90,6 +90,7 @@
     uint8_t current_date;
     uint8_t current_month;
     uint16_t current_year;
+    uint8_t current_year8;
     
     uint8_t current_seconds_old;
     uint8_t current_minutes_old;
