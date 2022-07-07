@@ -33,7 +33,8 @@
 #define LOADING 2
 #define DISPLAY_MEASUREMENT 3
 #define GUI 4
-#define AMPEROMETRY_USER 5  
+#define AMPEROMETRY_USER 5
+#define STALL 6
 
 uint8_t seconds = 0;
 uint8_t rtc_data_register;
@@ -113,7 +114,6 @@ int main(void)
 
     display_init(DISPLAY_ADDRESS);
     rtc_init(RTC_ADDRESS);
-    eeprom_current_address = 0x0006;
         
     int len = 0;
     
@@ -256,7 +256,6 @@ int main(void)
     
     //Start the UART (used by the BT) and the corresponding isr
     UART_BLT_Start();
-    UART_DEBUG_Start();
 
     
     //Initialize all interrupts
@@ -276,16 +275,49 @@ int main(void)
     
     TIA_SetResFB(TIA_RES_FEEDBACK_20K); //A 20KOhm feedback resistor is chosen for the TIA
     
-        
-    //Start the watchdog timer --> SERVE DAVVERO??
-    //CyWdtStart(CYWDT_1024_TICKS, CYWDT_LPMODE_NOCHANGE); // it enables the watchdog timer (period between 2 and 3 secs)    
+    eeprom_current_address = get_eeprom_current_address();
     
+    //n_samples fetch
+    n_measures = get_n_measures();
+    
+    len = snprintf(rtc_content, sizeof(rtc_content), "N_MEASURES: %d\r\n\n", n_measures);
+    UART_DEBUG_PutString(rtc_content);
+    
+    len = snprintf(rtc_content, sizeof(rtc_content), "EEPROM current address: %d\r\n\n", eeprom_current_address);
+    UART_DEBUG_PutString(rtc_content);
+    
+    //TO RESET MEMORY, UNCOMMENT LINES BELOW
+    /*
+    n_measures = 0;
+    ErrorCode error;
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x0004, n_measures); 
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in saving number of measurements in EEPROM memory\r\n");
+    }
+    CyDelay(50);
+    
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x0000, 0x00); 
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in saving EEPROM initialization H in EEPROM memory\r\n");
+    }
+    CyDelay(50);
+    
+    error = EEPROM_WriteRegister(EEPROM_ADDRESS, 0x0001, 0x06); 
+    if(error == ERROR) {
+        UART_DEBUG_PutString("\nError in saving EEPROM initialization L in EEPROM memory\r\n");
+    }
+    
+    CyDelay(50);*/
 
     while(1)
     {
         //CyWdtClear(); //The watchdog must be cleared using the CyWdtClear() function before three ticks of the watchdog timer occur
         
         switch(state) {
+                                    
+            case STALL:    
+            break;
+            
             case INITIALIZATION:
                 OLED_welcome_screen();
                 
@@ -303,15 +335,17 @@ int main(void)
                 len = snprintf(rtc_content, sizeof(rtc_content), "Anno: %d\r\n\n", current_year);
                 UART_DEBUG_PutString(rtc_content);
                 
+                current_year8 = 0xFF & (current_year - 2000);
+                
                 len = snprintf(rtc_content, sizeof(rtc_content), "%d-%d-%d %02d:%02d:%02d\n", current_date, 
                                current_month, current_year, current_hours, current_minutes, current_seconds);
                 UART_DEBUG_PutString(rtc_content);
                 
-                if(flag == 0) {
+                /*if(flag == 0) {
                     flag = 1;
                     save_current_measurement(glucose_concentration);
                     glucose_concentration_from_memory = get_measurement_from_memory(eeprom_current_address - 8);
-                }
+                }*/
                 
                 state = IDLE;
 
@@ -617,7 +651,14 @@ int main(void)
                        
                         break;
                     
+                    
+                    case HISTORY:
                         
+                        CyDelay(2000);
+                        display_history();
+                        state = STALL;
+                        
+                        break;
                         
                         
                     }  // end of BLT switch statment

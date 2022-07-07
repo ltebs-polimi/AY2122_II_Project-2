@@ -22,7 +22,7 @@
 #include "Globals.h"
 #include "Helper_functions.h"
 #include "OLED_Driver.h"
-
+#include "EEPROM_Driver.h"
 
 
 // ISR used to run a CV scan 
@@ -179,13 +179,19 @@ CY_ISR(adcDacInterrupt){
             glucose_GUI=(int)((uAMP_10-intercept_calibration)/slope_calibration);
             len= snprintf(str, sizeof(str), "D%dF", glucose_GUI);
             UART_BLT_PutString(str);
+        
+            save_current_measurement(glucose_GUI);
             
             
         }else{
             
             glucose_concentration=(int)((uAMP_10-intercept_calibration)/slope_calibration);
             
+            save_current_measurement(glucose_concentration);
+            
         }
+        
+
         
                 
     }
