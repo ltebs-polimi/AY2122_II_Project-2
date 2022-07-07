@@ -1,3 +1,5 @@
+### IMPORT SOME USEFUL LIBRARIES ###
+
 from pickle import TRUE
 import sys
 
@@ -33,16 +35,18 @@ import serial.tools.list_ports
 import pyqtgraph as pg
 from pyqtgraph import PlotWidget
 
+
+
+### GLOBAL VARIABLES DEFINITION ###
 serial_ports_array = []
 
-# Globals
 CONN_STATUS = False
 FINISHED_AMP = False
 stringa_prova_AMP=''
 PACKET_ARRIVED_AMP = False
 result=int(0)
 
-# Logging config
+### LOGGING CONFIGURATION ###
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 
@@ -96,14 +100,17 @@ class SerialWorker(QRunnable):
             try:
                 self.port = serial.Serial(port=self.port_name, baudrate=self.baudrate,
                                         write_timeout=0, timeout=2)    
-
+                
+                # Send a command to the psoc
                 if self.port.is_open:
 
                     self.send('A')
                     time.sleep(0.1)
                     self.send('z')
-                    time.sleep(0.1)
+                    time.sleep(1)
 
+
+                    # If a specific string is received, connect to that specific COM port
                     if (self.read() == "Glucose $$$"):
                         CONN_STATUS = True
                         self.signals.status.emit(self.port_name, 1)
@@ -178,9 +185,8 @@ class UpdateGraphSignals(QObject):
     @brief Class that defines the signals available to a UpdateGraphworker.
 
     Available signals (with respective inputs) are:
-        - plot_values:
-            int --> x value
-            int --> y value
+        - glucose_value:
+            int --> glucose concentration value
     """
     glucose_value = pyqtSignal(int)
 
@@ -207,9 +213,7 @@ class UpdateGraphWorker(QRunnable):
 
         self.port_graph = serial.Serial(port=self.port_graph_name, baudrate=self.baudrate_graph,
                                 write_timeout=0, timeout=2)  
-        
-
-        logging.info("in update graph worker init")
+    
 
         self.graph_signals = UpdateGraphSignals()
 
@@ -217,36 +221,44 @@ class UpdateGraphWorker(QRunnable):
     @pyqtSlot()
     def run(self):
         """!
-        @brief Estabilish connection with desired serial port.
+        @brief Wait to receive the glucose concentration result.
         """
         global FINISHED_AMP
 
+        # If AMP data are expected
         while FINISHED_AMP == False:
 
             self.read_values()
 
 
 
-
     @pyqtSlot()
     def read_values(self):
-        
+        """!
+        @brief Basic function for reading amperometry data.
+        """
         global FINISHED_AMP
         global stringa_prova_AMP
         global PACKET_ARRIVED_AMP
         global result
         stringa_result=''
 
+        # Check if some data can be read from the buffer
         if(self.port_graph.in_waiting>0):
             stringa_prova_AMP += self.port_graph.read().decode('utf-8', errors='replace')
             logging.info(stringa_prova_AMP)
             PACKET_ARRIVED_AMP=True
 
+        # Check if all data have been received (F is the last character sent from the PSOC)
         if PACKET_ARRIVED_AMP == True and stringa_prova_AMP[len(stringa_prova_AMP)-1]=="F":
+            
+            # The last packet contains the result in terms of glucose concentration
             for i in range(1, len(stringa_prova_AMP)-1):
                 stringa_result+=stringa_prova_AMP[i]
             
+            # The result is stored in a global variable
             result=int(stringa_result)
+            # Emit a signal to display the result
             self.graph_signals.glucose_value.emit(result)
             FINISHED_AMP=True
     
@@ -266,23 +278,17 @@ class UpdateGraphWorker(QRunnable):
 
 
 
-
+### MAIN WINDOW CLASS ###
 class Ui_UserWindow(object):
     def setupUi(self, UserWindow):
 
+        # Instantiate the worker
         self.serial_worker = SerialWorker(None)
 
         # create thread handler
         self.threadpool = QThreadPool()
-
         self.connected = CONN_STATUS
-
         self.CHECK_TOGGLE= bool(True)
-
-        # Some random data
-        self.hour = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        self.temperature1 = [30, 32, 34, 32, 33, 31, 29, 32, 35, 45]
-        self.temperature2 = [16, 20, 17, 23, 30, 25, 28, 26, 22, 32]
 
 
         UserWindow.setObjectName("UserWindow")
@@ -313,7 +319,7 @@ class Ui_UserWindow(object):
         self.Value_label.setAlignment(QtCore.Qt.AlignCenter)
         self.Value_label.setObjectName("Value_label")
         self.gridLayout.addWidget(self.Value_label, 1, 1, 1, 1)
-        self.Start_button = QtWidgets.QPushButton(self.frame)
+        self.Start_button = QtWidgets.QPushButton(self.frame, clicked= lambda: self.Start_AMP())
         self.Start_button.setObjectName("Start_button")
         self.gridLayout.addWidget(self.Start_button, 3, 1, 1, 1)
         spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
@@ -324,12 +330,9 @@ class Ui_UserWindow(object):
         self.horizontalLayout_2.setContentsMargins(40, -1, 40, -1)
         self.horizontalLayout_2.setSpacing(200)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-
-
         self.pushButton = QtWidgets.QPushButton(self.frame, clicked = lambda: self.on_toggle(self.CHECK_TOGGLE))
         self.pushButton.setMinimumSize(QtCore.QSize(150, 28))
         self.pushButton.setObjectName("pushButton")
@@ -370,13 +373,13 @@ class Ui_UserWindow(object):
         self.retranslateUi(UserWindow)
         QtCore.QMetaObject.connectSlotsByName(UserWindow)
 
-        self.serialscan()
 
     def retranslateUi(self, UserWindow):
         _translate = QtCore.QCoreApplication.translate
         UserWindow.setWindowTitle(_translate("UserWindow", "User Screen"))
+        self.Glucose_label.setFont(QtGui.QFont('Arial', 30))
         self.Glucose_label.setText(_translate("UserWindow", "GLUCOSE CONCENTRATION (mg/dL)"))
-        self.Value_label.setText(_translate("UserWindow", "VALUE"))
+        self.Value_label.setText(_translate("UserWindow", ""))
         self.Start_button.setText(_translate("UserWindow", "START MEASUREMENT"))
         self.pushButton.setText(_translate("UserWindow", ""))
         self.label_3.setText(_translate("UserWindow", "NOT CONNECTED"))
@@ -384,12 +387,15 @@ class Ui_UserWindow(object):
 
 
     def connect_to_COM(self):
+        """!
+        @brief Estabilish connection with the bluetooth COM port.
+        """
 
-        #scan continuously the serial port
+        # Search for all the available serial ports
         serial_ports_array = self.serialscan()
 
+        # Try to connect to the available serial ports
         i=0
-
         for i in range(len(serial_ports_array)):
             # setup reading worker
             self.serial_worker = SerialWorker(serial_ports_array[i]) # needs to be re defined
@@ -399,23 +405,23 @@ class Ui_UserWindow(object):
             # execute the worker
             self.threadpool.start(self.serial_worker)
 
+
     def show_result(self):
-        
+        """!
+        @brief Show the measurement result.
+        """        
+
         self.Value_label.setFont(QtGui.QFont('Arial', 80))
         self.Value_label.setText(str(result))
 
 
 
-    ####################
-    # SERIAL INTERFACE #
-    ####################
+    ### SERIAL SCAN METHOD ###
     def serialscan(self):
         """!
         @brief Scans all serial ports and create a list.
         """
-
         self.port_text = ""
-
 
         # acquire list of serial ports 
         serial_ports = [
@@ -425,24 +431,29 @@ class Ui_UserWindow(object):
 
         return serial_ports
 
-    ##################
-    # SERIAL SIGNALS #
-    ##################
+
+    ### START AMPEROMETRY METHOD ###
 
     @pyqtSlot()
     def Start_AMP(self):
         """!
-        @brief Draw the plots.
+        @brief Setup all elements to run an amperometry.
         """
         global FINISHED_AMP
 
         FINISHED_AMP= False
 
+
+        self.Value_label.setFont(QtGui.QFont('Arial', 30))
+        self.Value_label.setText("Wait for the result ...")
+
+        # Send command to psoc
         self.serial_worker.send('L')
         time.sleep(0.1)
         self.serial_worker.send('z')
         time.sleep(0.1)
 
+        # Kill the graph worker thread
         self.serial_worker.is_killed = True
         self.serial_worker.killed()
         time.sleep(0.5)
@@ -455,6 +466,8 @@ class Ui_UserWindow(object):
         self.threadpool.start(self.graph_worker)
 
 
+
+    ### CONNECTION/DISCONNECTION METHOD ###
     @pyqtSlot(bool)
     def on_toggle(self, checked):
         """!
@@ -483,7 +496,7 @@ class Ui_UserWindow(object):
 
 
 
-
+    ### CHECK SERIAL PORT STATUS METHOD ###
     def check_serialport_status(self, port_name, status):
         """!
         @brief Handle the status of the serial port connection.
@@ -504,6 +517,9 @@ class Ui_UserWindow(object):
             self.label_3.setStyleSheet("background-color:rgb(0,255,0);")
             self.label_3.setText("CONNECTED")
 
+
+
+    ### CHECK SERIAL WORKER TERMINATION METHOD ###
     def connected_device(self, port_name):
         """!
         @brief Checks on the termination of the serial worker.
@@ -511,6 +527,8 @@ class Ui_UserWindow(object):
         logging.info("Port {} closed.".format(port_name))
 
 
+
+    ### EXIT HANDLER ###
     def ExitHandler(self):
         """!
         @brief Kill every possible running thread upon exiting application.
