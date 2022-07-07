@@ -88,8 +88,8 @@ int main(void)
     valore_adc_mv_CV=0;
     valore_adc_mv_AMP=0;
     max_rel=0.0;
-    slope_calibration=0.0102;
-    intercept_calibration=1.0670;
+    slope_calibration=0.00929;
+    intercept_calibration=0.90714;
     
     //Initialize flags values
     Input_Flag=false;
