@@ -64,11 +64,11 @@ The GUI is based on 3 different screens:
 - first_screen.py: it allows to select between a user and a clinician
 
 - user_screen.py:
-    - automatic COM port detection by sending a proper command to the PSoC and waiting for the expected answer
+    - Automatic COM port detection by sending a proper command to the PSoC and waiting for the expected answer
     - By pressing the "START MEASUREMENT" button, only a chronoamperometry will be started by sending a proper command to the psoc. The two ISRs needed for the chronoamperometry will be started. Finally the result of the measurement is displayed
 
 - clinician_screen.py: 
-    - automatic COM port detection by sending a proper command to the PSoC and waiting for the expected answer
+    - Automatic COM port detection by sending a proper command to the PSoC and waiting for the expected answer
     - First tab (cyclic voltammetry): it is possible to setup all the required parameters for a cyclic voltammetry. Then it allows to visualize a real-time
     graph by pressing "DRAW"
     - Second tab (chronoamperometry): The clinician can decide to fetch a value of potential from the EEPROM or to start a CA based on the peak of potential identified 
