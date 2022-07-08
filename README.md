@@ -1,6 +1,6 @@
 # ELECTRONIC TECHNOLOGIES AND BIOSENSORS LABORATORY, a.a. 2021/22
 
-# Project 4 - Colombo L., D'Andrea M.
+# Project 2 - Colombo L., D'Andrea M.
 
 ## Objective of the project
 
