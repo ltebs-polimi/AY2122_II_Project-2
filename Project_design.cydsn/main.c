@@ -313,6 +313,13 @@ int main(void)
     }
     
     CyDelay(50);*/
+    
+    //TO WRITE POTENTIAL VALUE TO EEPROM
+    potential_max_current = 2200;
+    save_CV_result();
+    len = snprintf(rtc_content, sizeof(rtc_content), "potential saved: %d", potential_max_current);
+    UART_DEBUG_PutString(rtc_content);
+    
 
     while(1)
     {
