@@ -242,6 +242,7 @@ class UpdateGraphWorker(QRunnable):
     """!
     @brief Main class for serial communication: handles connection with device.
     """
+
     def __init__(self, port_name):
         """!
         @brief Init worker.
@@ -258,8 +259,6 @@ class UpdateGraphWorker(QRunnable):
         self.port_graph = serial.Serial(port=self.port_graph_name, baudrate=self.baudrate_graph,
                                 write_timeout=0, timeout=2)  
         
-        # Variable used to highlight that we have started the graph worker
-        GRAPH_STATUS=True
 
         self.graph_signals = UpdateGraphSignals()
 
@@ -283,7 +282,10 @@ class UpdateGraphWorker(QRunnable):
         global initial_value
         global final_value
         global READ_PACKET_DATA
+        global GRAPH_STATUS
      
+        GRAPH_STATUS=True
+
         # If CV data are expected
         if RECEIVE_CV_DATA:
             
@@ -406,6 +408,7 @@ class UpdateGraphWorker(QRunnable):
             # Stop the graph
             if(LIMIT_REACHED_AMP):
                 FINISHED_AMP_GRAPH = True
+
 
 
     @pyqtSlot()
@@ -1037,10 +1040,10 @@ class Ui_ClinicianWindow(object):
         self.graphWidget_AMP.addLegend()
 
         # Connect update buttons
-        self.Scan_update_button.clicked.connect(lambda x=UPDATE_SCAN: self.update_values_CV(x))
-        self.Initial_update_button.clicked.connect(lambda x=UPDATE_INITIAL: self.update_values_CV(x))
-        self.Final_update_button.clicked.connect(lambda x=UPDATE_FINAL: self.update_values_CV(x))
-        self.Time_update_button.clicked.connect(lambda x=UPDATE_TIME: self.update_values_CV(x))
+        self.Scan_update_button.clicked.connect(lambda state, x=UPDATE_SCAN: self.update_values_CV(state, x))
+        self.Initial_update_button.clicked.connect(lambda state, x=UPDATE_INITIAL: self.update_values_CV(state, x))
+        self.Final_update_button.clicked.connect(lambda state, x=UPDATE_FINAL: self.update_values_CV(state, x))
+        self.Time_update_button.clicked.connect(lambda state, x=UPDATE_TIME: self.update_values_CV(state, x))
 
         # Initially disable all update buttons
         self.Initial_update_button.setDisabled(False)
@@ -1088,7 +1091,7 @@ class Ui_ClinicianWindow(object):
         self.Stop_amp_button.setText(_translate("ClinicianWindow", "STOP"))
         self.Fetch_amp_button.setText(_translate("ClinicianWindow", "FETCH FROM MEMORY"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), _translate("ClinicianWindow", "Chronoamperometry"))
-        self.Value_data_label.setText(_translate("ClinicianWindow", "VALUE"))
+        self.Value_data_label.setText(_translate("ClinicianWindow", ""))
         self.Start_data_button.setText(_translate("ClinicianWindow", "SHOW RESULT"))
         self.Glucose_data_label.setText(_translate("ClinicianWindow", "GLUCOSE CONCENTRATION (mg/dL):"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("ClinicianWindow", "Data Visualization"))
@@ -1254,7 +1257,7 @@ class Ui_ClinicianWindow(object):
 
     ### UPDATE CV PARAMETERS FOR THE PLOT ###
     @pyqtSlot()
-    def update_values_CV(self, char):
+    def update_values_CV(self,state, char):
         """!
         @brief Function to update the CV plot parameters
         """
@@ -1491,17 +1494,32 @@ class Ui_ClinicianWindow(object):
         global RECEIVE_AMP_DATA
         global RECEIVE_CV_DATA
         global RECEIVE_HISTORY
+        global GRAPH_STATUS
 
-        # Send command to psoc
-        self.graph_worker.send_graph('M')
-        time.sleep(0.1)
-        self.graph_worker.send_graph('z')
-        time.sleep(0.1)
+        logging.info(GRAPH_STATUS)
 
-        # Kill the graph worker thread        
-        self.graph_worker.is_killed_graph = True
-        self.graph_worker.killed_graph()
-        time.sleep(0.2)
+        if(GRAPH_STATUS==True):
+            # Send command to psoc
+            self.graph_worker.send_graph('M')
+            time.sleep(0.1)
+            self.graph_worker.send_graph('z')
+            time.sleep(0.1)
+
+            # Kill the graph worker thread        
+            self.graph_worker.is_killed_graph = True
+            self.graph_worker.killed_graph()
+            time.sleep(0.2)
+
+        else:
+            self.serial_worker.send('M')
+            time.sleep(0.1)
+            self.serial_worker.send('z')
+            time.sleep(0.1)
+
+            # Kill the graph worker thread        
+            self.serial_worker.is_killed = True
+            self.serial_worker.killed()
+            time.sleep(0.2)
 
         self.graph_worker = UpdateGraphWorker(port_name_global) # needs to be re defined
 
